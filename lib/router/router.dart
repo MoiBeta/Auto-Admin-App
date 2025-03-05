@@ -1,8 +1,9 @@
-import 'package:auto_admin_app/auth/auth_provider.dart';
-import 'package:auto_admin_app/auth/login_screen.dart';
-import 'package:auto_admin_app/auth/register_screen.dart';
-import 'package:auto_admin_app/home/home_page.dart';
 import 'package:auto_admin_app/router/routes.dart';
+import 'package:auto_admin_app/screen/auth/auth_provider.dart';
+import 'package:auto_admin_app/screen/auth/login_screen.dart';
+import 'package:auto_admin_app/screen/auth/register_screen.dart';
+import 'package:auto_admin_app/screen/home/adding_task_screen.dart';
+import 'package:auto_admin_app/screen/home/home_page.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -28,6 +29,11 @@ GoRouter router(Ref ref) {
         path: Routes.register,
         name: Routes.register,
         builder: (context, state) => const RegisterScreen(),
+      ),
+      GoRoute(
+        path: Routes.addingTask,
+        name: Routes.addingTask,
+        builder: (context, state) => const AddingTaskScreen(),
       ),
     ],
     redirect: (context, state) {

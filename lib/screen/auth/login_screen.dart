@@ -1,17 +1,17 @@
-import 'package:auto_admin_app/auth/auth_provider.dart';
 import 'package:auto_admin_app/router/routes.dart';
+import 'package:auto_admin_app/screen/auth/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-class RegisterScreen extends ConsumerStatefulWidget {
-  const RegisterScreen({super.key});
+class LoginScreen extends ConsumerStatefulWidget {
+  const LoginScreen({super.key});
 
   @override
-  ConsumerState<RegisterScreen> createState() => _RegisterScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _RegisterScreenState extends ConsumerState<RegisterScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final TextEditingController emailController = TextEditingController();
 
   final TextEditingController passwordController = TextEditingController();
@@ -20,7 +20,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Registro'),
+        title: Text('Iniciar sesión'),
       ),
       body: Padding(
         padding: const EdgeInsets.symmetric(
@@ -42,22 +42,22 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               ),
             ),
             FilledButton(
-              onPressed: () async {
-                await ref.read(authNotifierProvider.notifier).register(
-                  emailAddress: emailController.text,
-                  password: passwordController.text,
-                );
-                if(context.mounted){
-                  context.pushReplacementNamed(Routes.home);
-                }
-              },
-              child: Text('Registrarse'),
+                onPressed: () async {
+                  await ref.read(authNotifierProvider.notifier).login(
+                      emailAddress: emailController.text,
+                      password: passwordController.text,
+                  );
+                  if(context.mounted){
+                    context.pushReplacementNamed(Routes.home);
+                  }
+                },
+                child: Text('Iniciar sesión'),
             ),
             FilledButton(
-              onPressed: () async {
-                context.pushReplacementNamed(Routes.login);
-              },
-              child: Text('Volver'),
+                onPressed: () async {
+                  context.pushReplacementNamed(Routes.register);
+                },
+                child: Text('Crear cuenta'),
             ),
           ],
         ),

@@ -1,0 +1,1 @@
+enum TaskFrequency { none, daily, weekly, monthly, yearly, custom }

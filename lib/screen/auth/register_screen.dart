@@ -1,18 +1,17 @@
-import 'package:auto_admin_app/auth/auth_provider.dart';
+import 'package:auto_admin_app/router/routes.dart';
+import 'package:auto_admin_app/screen/auth/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../router/routes.dart';
-
-class LoginScreen extends ConsumerStatefulWidget {
-  const LoginScreen({super.key});
+class RegisterScreen extends ConsumerStatefulWidget {
+  const RegisterScreen({super.key});
 
   @override
-  ConsumerState<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _LoginScreenState extends ConsumerState<LoginScreen> {
+class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final TextEditingController emailController = TextEditingController();
 
   final TextEditingController passwordController = TextEditingController();
@@ -21,7 +20,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Iniciar sesión'),
+        title: Text('Registro'),
       ),
       body: Padding(
         padding: const EdgeInsets.symmetric(
@@ -43,22 +42,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
             ),
             FilledButton(
-                onPressed: () async {
-                  await ref.read(authNotifierProvider.notifier).login(
-                      emailAddress: emailController.text,
-                      password: passwordController.text,
-                  );
-                  if(context.mounted){
-                    context.pushReplacementNamed(Routes.home);
-                  }
-                },
-                child: Text('Iniciar sesión'),
+              onPressed: () async {
+                await ref.read(authNotifierProvider.notifier).register(
+                  emailAddress: emailController.text,
+                  password: passwordController.text,
+                );
+                if(context.mounted){
+                  context.pushReplacementNamed(Routes.home);
+                }
+              },
+              child: Text('Registrarse'),
             ),
             FilledButton(
-                onPressed: () async {
-                  context.pushReplacementNamed(Routes.register);
-                },
-                child: Text('Crear cuenta'),
+              onPressed: () async {
+                context.pushReplacementNamed(Routes.login);
+              },
+              child: Text('Volver'),
             ),
           ],
         ),
