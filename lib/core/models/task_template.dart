@@ -10,25 +10,27 @@ class TaskTemplate {
   TaskFrequency frequency;
   List<DateTime>? reminders;
   List<Subtask>? subtasks;
-  String? imagePath;
   int? customRepeatDays;
+  int priority;
 
   TaskTemplate({
     required this.id,
     required this.title,
-    this.description,
     required this.startDate,
     required this.frequency,
+    required this.priority,
+    this.description,
     this.reminders,
     this.subtasks,
-    this.imagePath,
     this.customRepeatDays,
   });
 
   factory TaskTemplate.fromDoc(DocumentSnapshot doc) => TaskTemplate(
-      id: doc.id,
-      title: doc['title'],
-      startDate: (doc['startDate'] as Timestamp).toDate(),
-      frequency: TaskFrequency.values.singleWhere((frequency) => frequency.name == doc['frequency']),
-  );
+        id: doc.id,
+        title: doc['title'],
+        startDate: (doc['startDate'] as Timestamp).toDate(),
+        frequency: TaskFrequency.values
+            .singleWhere((frequency) => frequency.name == doc['frequency']),
+        priority: doc['priority'],
+      );
 }

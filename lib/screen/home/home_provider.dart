@@ -11,51 +11,52 @@ part 'home_provider.g.dart';
 
 @Riverpod(keepAlive: true)
 class HomeNotifier extends _$HomeNotifier {
-
-  StreamSubscription? _subscription;
+  List<TaskTemplate> taskTemplates = [];
 
   @override
   List<TaskInstance> build() {
-    _listenToTasks(ref.watch(selectedDateProvider));
-
-    ref.onDispose(() {
-      _subscription?.cancel();
-    });
-
+    getTaskInstances(ref.watch(selectedDateProvider));
     return [];
   }
 
-  void _listenToTasks(DateTime selectedDate) {
+  Future<void> getTaskInstances(DateTime selectedDate) async {
+    List<TaskInstance> taskInstances = [];
 
-    if(_subscription == null){
-      FirebaseFirestore.instance
-          .collection('taskInstances')
-          .where(
-        'date',
-        isEqualTo: Timestamp.fromDate(selectedDate),
-      )
-          .get()
-          .then((QuerySnapshot snapshot) {
-        if (snapshot.docs.isNotEmpty) {
-          state = snapshot.docs.map((doc) => TaskInstance.fromDoc(doc)).toList();
-        }
-      });
-    }
-
-    _subscription?.cancel();
-
-    _subscription = FirebaseFirestore.instance
+    QuerySnapshot snapshot = await FirebaseFirestore.instance
         .collection('taskInstances')
         .where(
           'date',
           isEqualTo: Timestamp.fromDate(selectedDate),
         )
-        .snapshots()
-        .listen((QuerySnapshot snapshot) {
-      if (snapshot.docs.isNotEmpty) {
-        state = snapshot.docs.map((doc) => TaskInstance.fromDoc(doc)).toList();
-      }
+        .get();
+
+    if (snapshot.docs.isNotEmpty) {
+      taskInstances = await sortTaskInstances(
+        snapshot.docs
+            .map(
+              (doc) => TaskInstance.fromDoc(doc),
+            )
+            .toList(),
+      );
+    }
+
+    state = taskInstances;
+  }
+
+  Future<List<TaskInstance>> sortTaskInstances(
+      List<TaskInstance> taskInstances) async {
+    taskTemplates = await fetchTaskTemplates();
+    Map<String, int> templatePriorityMap = {
+      for (var template in taskTemplates) template.id: template.priority
+    };
+
+    taskInstances.sort((a, b) {
+      int priorityA = templatePriorityMap[a.taskTemplateId] ?? 0;
+      int priorityB = templatePriorityMap[b.taskTemplateId] ?? 0;
+      return priorityA.compareTo(priorityB);
     });
+
+    return taskInstances;
   }
 
   Future<void> createRecurringTask({
@@ -122,7 +123,15 @@ class HomeNotifier extends _$HomeNotifier {
 
   Future<void> completeTask(
       {required String taskInstanceId, required bool completed}) async {
-    await FirebaseFirestore.instance
+
+    List<TaskInstance> instances = List<TaskInstance>.from(state);
+
+    int index = instances.indexWhere((instance) => instance.id == taskInstanceId);
+    instances[index].completed = completed;
+
+    state = instances;
+
+    FirebaseFirestore.instance
         .collection('taskInstances')
         .doc(taskInstanceId)
         .update({
@@ -147,7 +156,6 @@ class HomeNotifier extends _$HomeNotifier {
     final FirebaseFirestore firestore = FirebaseFirestore.instance;
     final WriteBatch batch = firestore.batch();
 
-    // 1️⃣ Obtener y eliminar todas las instancias de la tarea
     final taskInstances = await firestore
         .collection("taskInstances")
         .where("taskTemplateId", isEqualTo: taskTemplateId)
@@ -157,14 +165,53 @@ class HomeNotifier extends _$HomeNotifier {
       batch.delete(doc.reference);
     }
 
-    // 2️⃣ Eliminar la plantilla de la tarea
-    final taskTemplateRef = firestore.collection("taskTemplates").doc(taskTemplateId);
+    final taskTemplateRef =
+        firestore.collection("taskTemplates").doc(taskTemplateId);
     batch.delete(taskTemplateRef);
 
-    // 3️⃣ Aplicar los cambios
     await batch.commit();
   }
 
+  Future<void> updateTaskPriorities(int oldIndex, int newIndex) async {
+    if (newIndex > oldIndex) {
+      newIndex -= 1;
+    }
+
+    List<TaskInstance> instances = List.from(state);
+
+    final taskItem = instances.removeAt(oldIndex);
+    instances.insert(newIndex, taskItem);
+
+    state = instances;
+
+    updateTasksInDatabase(oldIndex, newIndex);
+  }
+
+  Future<void> updateTasksInDatabase(int oldIndex, int newIndex) async {
+    final templateItem = taskTemplates.removeAt(oldIndex);
+    taskTemplates.insert(newIndex, templateItem);
+
+    final batch = FirebaseFirestore.instance.batch();
+
+    for (int i = 0; i < taskTemplates.length; i++) {
+      final task = taskTemplates[i];
+      final docRef =
+          FirebaseFirestore.instance.collection('taskTemplates').doc(task.id);
+
+      batch.update(docRef, {'priority': i + 1});
+    }
+
+    await batch.commit();
+  }
+
+  Future<List<TaskTemplate>> fetchTaskTemplates() async {
+    QuerySnapshot snapshot = await FirebaseFirestore.instance
+        .collection('taskTemplates')
+        .orderBy('priority')
+        .get();
+
+    return snapshot.docs.map((doc) => TaskTemplate.fromDoc(doc)).toList();
+  }
 }
 
 @riverpod

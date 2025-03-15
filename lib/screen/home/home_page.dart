@@ -67,89 +67,103 @@ class HomePage extends ConsumerWidget {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(8.0),
-              child: ListView(
+              child: ReorderableListView(
+                onReorder: (int oldIndex, int newIndex) async {
+                  ref.read(homeNotifierProvider.notifier).updateTaskPriorities(oldIndex, newIndex);
+                },
                 children: [
                   ...tasksList.map(
-                    (task) => InkWell(
-                      onTap: (){
-                        ref.read(homeNotifierProvider.notifier).completeTask(
-                            taskInstanceId: task.id,
-                            completed: !task.completed,
-                        );
-                      },
-                      onLongPress: (){
-                        showDialog(
-                            context: context,
-                            builder: (ctx){
-                              return AlertDialog(
-                                title: Icon(
-                                  Icons.warning,
-                                  size: 100,
-                                ),
-                                content: Text('¿Quieres eliminar esta tarea?'),
-                                actions: [
-                                  ElevatedButton(
-                                      onPressed: () async {
-                                        await ref.read(homeNotifierProvider.notifier).deleteRecurringTask(task.taskTemplateId);
-                                        if(context.mounted){
-                                          context.pop();
-                                        }
-                                      },
-                                      child: Text('Si, Eliminar'),
-                                  ),
-                                  ElevatedButton(
-                                      onPressed: (){
-                                        context.pop();
-                                      },
-                                      child: Text('No'),
-                                  ),
-                                ],
+                      (task) => InkWell(
+                        key: ValueKey(task.id),
+                        onTap: () {
+                          ref.read(homeNotifierProvider.notifier).completeTask(
+                                taskInstanceId: task.id,
+                                completed: !task.completed,
                               );
-                            },
-                        );
-                      },
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.grey.withAlpha(50),
-                          borderRadius: BorderRadius.circular(5),
-                        ),
-                        padding: EdgeInsets.all(10),
-                        margin: EdgeInsets.only(
-                          bottom: 5,
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              task.completed
-                                  ? Icons.check_box
-                                  : Icons.check_box_outline_blank,
-                            ),
-                            FutureBuilder(
-                              future: ref
-                                  .read(homeNotifierProvider.notifier)
-                                  .getTaskTemplateFromId(task.taskTemplateId),
-                              builder: (context,
-                                  AsyncSnapshot<TaskTemplate?> snapshot) {
-                                if (snapshot.hasData) {
-                                  TaskTemplate taskTemplate = snapshot.data!;
-                                  return Text(taskTemplate.title);
-                                }
-                                return Center(
-                                  child: CircularProgressIndicator(),
-                                );
-                              },
-                            ),
-                          ],
+                        },
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.grey.withAlpha(50),
+                            borderRadius: BorderRadius.circular(5),
+                          ),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 5,
+                          ),
+                          margin: EdgeInsets.only(
+                            bottom: 5,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Icon(
+                                task.completed
+                                    ? Icons.check_box
+                                    : Icons.check_box_outline_blank,
+                              ),
+                              FutureBuilder(
+                                future: ref
+                                    .read(homeNotifierProvider.notifier)
+                                    .getTaskTemplateFromId(task.taskTemplateId),
+                                builder: (context,
+                                    AsyncSnapshot<TaskTemplate?> snapshot) {
+                                  if (snapshot.hasData) {
+                                    TaskTemplate taskTemplate = snapshot.data!;
+                                    return Text(taskTemplate.title);
+                                  }
+                                  return Center(
+                                    child: CircularProgressIndicator(),
+                                  );
+                                },
+                              ),
+                              IconButton(
+                                onPressed: () {
+                                  showDialog(
+                                    context: context,
+                                    builder: (ctx) {
+                                      return AlertDialog(
+                                        title: Icon(
+                                          Icons.warning,
+                                          size: 100,
+                                        ),
+                                        content: Text(
+                                            '¿Quieres eliminar esta tarea?'),
+                                        actions: [
+                                          ElevatedButton(
+                                            onPressed: () async {
+                                              await ref
+                                                  .read(homeNotifierProvider
+                                                      .notifier)
+                                                  .deleteRecurringTask(
+                                                      task.taskTemplateId);
+                                              if (context.mounted) {
+                                                context.pop();
+                                              }
+                                            },
+                                            child: Text('Si, Eliminar'),
+                                          ),
+                                          ElevatedButton(
+                                            onPressed: () {
+                                              context.pop();
+                                            },
+                                            child: Text('No'),
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  );
+                                },
+                                icon: Icon(Icons.more_vert),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
+                    ],
                   ),
-                ],
               ),
-            ),
+            ),],
           ),
-        ],
-      ),
       floatingActionButton: FloatingActionButton(
         child: const Icon(Icons.add),
         onPressed: () {
