@@ -2,6 +2,7 @@ import 'package:auto_admin_app/core/enums/task_frequency.dart';
 import 'package:auto_admin_app/screen/home/home_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 class AddingTaskScreen extends ConsumerStatefulWidget {
@@ -62,7 +63,7 @@ class _AddingTaskScreenState extends ConsumerState<AddingTaskScreen> {
               return DropdownMenuItem(
                 value: taskFrequency,
                 child: Text(
-                    taskFrequency.name,
+                    getNameFromTaskFrequency(taskFrequency),
                   style: TextStyle(
                     color: Colors.black,
                   ),
@@ -82,19 +83,41 @@ class _AddingTaskScreenState extends ConsumerState<AddingTaskScreen> {
             },
           ),
           ElevatedButton(
-            onPressed: () {
-              if (titleEditingController.text.isNotEmpty) {
-                ref.read(homeNotifierProvider.notifier).createRecurringTask(
+            onPressed: () async {
+              if (titleEditingController.text.isNotEmpty){
+                await ref.read(homeNotifierProvider.notifier).createRecurringTask(
                   title: titleEditingController.text,
                   frequency: taskFrequency,
                   startDate: selectedDate,
                 );
               }
+              if(context.mounted){
+                context.pop();
+              }
             },
-            child: Text('Agregar'),
+            child: ref.watch(isLoadingProvider)
+                ? CircularProgressIndicator()
+                : Text('Agregar'),
           ),
         ],
       ),
     );
+  }
+
+  String getNameFromTaskFrequency(TaskFrequency taskFrequency){
+    switch(taskFrequency){
+      case TaskFrequency.none:
+        return 'Ninguno';
+      case TaskFrequency.daily:
+        return 'Diariamente';
+      case TaskFrequency.weekly:
+        return 'Semanalmente';
+      case TaskFrequency.monthly:
+        return 'Mensualmente';
+      case TaskFrequency.yearly:
+        return 'Anualmente';
+      case TaskFrequency.custom:
+        return 'Personalizado';
+    }
   }
 }

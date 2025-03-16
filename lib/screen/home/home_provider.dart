@@ -67,6 +67,8 @@ class HomeNotifier extends _$HomeNotifier {
     List<Subtask> subtasks = const [],
     int daysAhead = 30,
   }) async {
+    ref.read(isLoadingProvider.notifier).setLoading(true);
+
     final FirebaseFirestore firestore = FirebaseFirestore.instance;
 
     final taskTemplateRef = firestore.collection('taskTemplates').doc();
@@ -78,6 +80,7 @@ class HomeNotifier extends _$HomeNotifier {
       'subtasks': subtasks
           .map((s) => {'id': s.id, 'title': s.title, 'completed': false})
           .toList(),
+      'priority': taskTemplates.length + 1,
     });
 
     List<Map<String, dynamic>> taskInstances = [];
@@ -119,14 +122,16 @@ class HomeNotifier extends _$HomeNotifier {
       batch.set(docRef, task);
     }
     await batch.commit();
+    await getTaskInstances(ref.watch(selectedDateProvider));
+    ref.read(isLoadingProvider.notifier).setLoading(false);
   }
 
   Future<void> completeTask(
       {required String taskInstanceId, required bool completed}) async {
-
     List<TaskInstance> instances = List<TaskInstance>.from(state);
 
-    int index = instances.indexWhere((instance) => instance.id == taskInstanceId);
+    int index =
+        instances.indexWhere((instance) => instance.id == taskInstanceId);
     instances[index].completed = completed;
 
     state = instances;
@@ -169,7 +174,10 @@ class HomeNotifier extends _$HomeNotifier {
         firestore.collection("taskTemplates").doc(taskTemplateId);
     batch.delete(taskTemplateRef);
 
+    taskTemplates = taskTemplates.where((template) => template.id != taskTemplateId).toList();
+
     await batch.commit();
+    await updateTasksInDatabase();
   }
 
   Future<void> updateTaskPriorities(int oldIndex, int newIndex) async {
@@ -184,12 +192,16 @@ class HomeNotifier extends _$HomeNotifier {
 
     state = instances;
 
-    updateTasksInDatabase(oldIndex, newIndex);
+    reorderTaskTemplate(oldIndex, newIndex);
   }
 
-  Future<void> updateTasksInDatabase(int oldIndex, int newIndex) async {
+  Future<void> reorderTaskTemplate(int oldIndex, int newIndex) async {
     final templateItem = taskTemplates.removeAt(oldIndex);
     taskTemplates.insert(newIndex, templateItem);
+    await updateTasksInDatabase();
+  }
+
+  Future<void> updateTasksInDatabase() async {
 
     final batch = FirebaseFirestore.instance.batch();
 
@@ -227,5 +239,15 @@ class SelectedDate extends _$SelectedDate {
 
   void selectDate(DateTime date) {
     state = date;
+  }
+}
+
+@riverpod
+class IsLoading extends _$IsLoading {
+  @override
+  bool build() => false;
+
+  void setLoading(bool isLoading) {
+    state = isLoading;
   }
 }
