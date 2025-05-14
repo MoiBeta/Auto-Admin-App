@@ -24,7 +24,7 @@ class AuthNotifier extends _$AuthNotifier {
     required String password,
 }) async {
     try {
-      final credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      /*final credential =*/ await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: emailAddress,
         password: password,
       );

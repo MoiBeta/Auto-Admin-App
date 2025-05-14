@@ -133,7 +133,7 @@ class FirestoreTaskRepository implements TaskRepository {
     List<TaskInstance> taskInstances,
     String userId,
   ) async {
-    List<TaskTemplate> taskTemplates = await fetchTaskTemplates(userId: '');
+    List<TaskTemplate> taskTemplates = await fetchTaskTemplates(userId: userId);
     Map<String, int> templatePriorityMap = {
       for (var template in taskTemplates) template.id: template.priority
     };

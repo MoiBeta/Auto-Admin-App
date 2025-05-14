@@ -28,10 +28,12 @@ class HomeNotifier extends _$HomeNotifier {
   }
 
   Future<void> getTaskInstances(DateTime selectedDate) async {
-    state = await taskRepository.getTaskInstances(
-      selectedDate: selectedDate,
-      userId: userId ?? '',
-    );
+    Future.microtask(() async {
+      state = await taskRepository.getTaskInstances(
+        selectedDate: selectedDate,
+        userId: userId ?? '',
+      );
+    });
   }
 
   Future<void> createRecurringTask({

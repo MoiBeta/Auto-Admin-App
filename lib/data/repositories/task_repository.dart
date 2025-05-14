@@ -8,9 +8,11 @@ abstract class TaskRepository {
     required DateTime selectedDate,
     required String userId,
   });
+
   Future<List<TaskTemplate>> fetchTaskTemplates({
     required String userId,
   });
+
   Future<String> createTaskTemplate({
     required String userId,
     required String title,
@@ -20,6 +22,7 @@ abstract class TaskRepository {
     List<Subtask> subtasks = const [],
     int priority = 0,
   });
+
   Future<void> createRecurringTaskInstances({
     required String userId,
     required String taskTemplateId,
