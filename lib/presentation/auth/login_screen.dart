@@ -1,5 +1,5 @@
 import 'package:auto_admin_app/router/routes.dart';
-import 'package:auto_admin_app/screen/auth/auth_provider.dart';
+import 'package:auto_admin_app/state/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';

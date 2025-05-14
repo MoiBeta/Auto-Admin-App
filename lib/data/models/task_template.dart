@@ -1,5 +1,5 @@
-import 'package:auto_admin_app/core/enums/task_frequency.dart';
-import 'package:auto_admin_app/core/models/sub_task.dart';
+import 'package:auto_admin_app/data/enums/task_frequency.dart';
+import 'package:auto_admin_app/data/models/sub_task.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class TaskTemplate {

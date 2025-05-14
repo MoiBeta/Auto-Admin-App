@@ -1,9 +1,12 @@
 import 'dart:async';
 
-import 'package:auto_admin_app/core/enums/task_frequency.dart';
-import 'package:auto_admin_app/core/models/sub_task.dart';
-import 'package:auto_admin_app/core/models/task_instance.dart';
-import 'package:auto_admin_app/core/models/task_template.dart';
+import 'package:auto_admin_app/data/enums/task_frequency.dart';
+import 'package:auto_admin_app/data/models/sub_task.dart';
+import 'package:auto_admin_app/data/models/task_instance.dart';
+import 'package:auto_admin_app/data/models/task_template.dart';
+import 'package:auto_admin_app/data/repositories/task_repository.dart';
+import 'package:auto_admin_app/state/auth_provider.dart';
+import 'package:auto_admin_app/state/repository_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -11,52 +14,24 @@ part 'home_provider.g.dart';
 
 @Riverpod(keepAlive: true)
 class HomeNotifier extends _$HomeNotifier {
+  late TaskRepository taskRepository;
   List<TaskTemplate> taskTemplates = [];
+  String? userId;
 
   @override
   List<TaskInstance> build() {
     getTaskInstances(ref.watch(selectedDateProvider));
+    checkAndGenerateTaskInstances();
+    taskRepository = ref.read(taskRepositoryProvider);
+    userId = ref.read(authNotifierProvider)!.uid;
     return [];
   }
 
   Future<void> getTaskInstances(DateTime selectedDate) async {
-    List<TaskInstance> taskInstances = [];
-
-    QuerySnapshot snapshot = await FirebaseFirestore.instance
-        .collection('taskInstances')
-        .where(
-          'date',
-          isEqualTo: Timestamp.fromDate(selectedDate),
-        )
-        .get();
-
-    if (snapshot.docs.isNotEmpty) {
-      taskInstances = await sortTaskInstances(
-        snapshot.docs
-            .map(
-              (doc) => TaskInstance.fromDoc(doc),
-            )
-            .toList(),
-      );
-    }
-
-    state = taskInstances;
-  }
-
-  Future<List<TaskInstance>> sortTaskInstances(
-      List<TaskInstance> taskInstances) async {
-    taskTemplates = await fetchTaskTemplates();
-    Map<String, int> templatePriorityMap = {
-      for (var template in taskTemplates) template.id: template.priority
-    };
-
-    taskInstances.sort((a, b) {
-      int priorityA = templatePriorityMap[a.taskTemplateId] ?? 0;
-      int priorityB = templatePriorityMap[b.taskTemplateId] ?? 0;
-      return priorityA.compareTo(priorityB);
-    });
-
-    return taskInstances;
+    state = await taskRepository.getTaskInstances(
+      selectedDate: selectedDate,
+      userId: userId ?? '',
+    );
   }
 
   Future<void> createRecurringTask({
@@ -66,62 +41,25 @@ class HomeNotifier extends _$HomeNotifier {
     List<DateTime> reminders = const [],
     List<Subtask> subtasks = const [],
     int daysAhead = 30,
+    String? taskTemplateId,
   }) async {
     ref.read(isLoadingProvider.notifier).setLoading(true);
 
-    final FirebaseFirestore firestore = FirebaseFirestore.instance;
+    taskTemplateId ??= await taskRepository.createTaskTemplate(
+      userId: userId!,
+      title: title,
+      frequency: frequency,
+      startDate: startDate,
+      priority: taskTemplates.length + 2,
+    );
 
-    final taskTemplateRef = firestore.collection('taskTemplates').doc();
-    await taskTemplateRef.set({
-      'title': title,
-      'frequency': frequency.name,
-      'startDate': Timestamp.fromDate(startDate),
-      'reminders': reminders.map((e) => e.toIso8601String()).toList(),
-      'subtasks': subtasks
-          .map((s) => {'id': s.id, 'title': s.title, 'completed': false})
-          .toList(),
-      'priority': taskTemplates.length + 1,
-    });
+    await taskRepository.createRecurringTaskInstances(
+      userId: userId!,
+      taskTemplateId: taskTemplateId,
+      startDate: startDate,
+      frequency: frequency,
+    );
 
-    List<Map<String, dynamic>> taskInstances = [];
-    DateTime currentDate = startDate;
-    for (int i = 0; i < daysAhead; i++) {
-      taskInstances.add({
-        'taskTemplateId': taskTemplateRef.id,
-        'date': Timestamp.fromDate(currentDate),
-        'completed': false,
-        'completedAt': null,
-      });
-
-      switch (frequency) {
-        case TaskFrequency.daily:
-          currentDate = currentDate.add(Duration(days: 1));
-          break;
-        case TaskFrequency.weekly:
-          currentDate = currentDate.add(Duration(days: 7));
-          break;
-        case TaskFrequency.monthly:
-          currentDate = DateTime(
-              currentDate.year, currentDate.month + 1, currentDate.day);
-          break;
-        case TaskFrequency.yearly:
-          currentDate = DateTime(
-              currentDate.year + 1, currentDate.month, currentDate.day);
-          break;
-        case TaskFrequency.none:
-          break;
-        case TaskFrequency.custom:
-          // TODO: Handle this case.
-          throw UnimplementedError();
-      }
-    }
-
-    WriteBatch batch = firestore.batch();
-    for (var task in taskInstances) {
-      var docRef = firestore.collection('taskInstances').doc();
-      batch.set(docRef, task);
-    }
-    await batch.commit();
     await getTaskInstances(ref.watch(selectedDateProvider));
     ref.read(isLoadingProvider.notifier).setLoading(false);
   }
@@ -174,10 +112,14 @@ class HomeNotifier extends _$HomeNotifier {
         firestore.collection("taskTemplates").doc(taskTemplateId);
     batch.delete(taskTemplateRef);
 
-    taskTemplates = taskTemplates.where((template) => template.id != taskTemplateId).toList();
+    taskTemplates = taskTemplates
+        .where((template) => template.id != taskTemplateId)
+        .toList();
+
+    state = List.from(state.where(
+        (taskInstance) => taskInstance.taskTemplateId != taskTemplateId));
 
     await batch.commit();
-    await updateTasksInDatabase();
   }
 
   Future<void> updateTaskPriorities(int oldIndex, int newIndex) async {
@@ -189,9 +131,7 @@ class HomeNotifier extends _$HomeNotifier {
 
     final taskItem = instances.removeAt(oldIndex);
     instances.insert(newIndex, taskItem);
-
     state = instances;
-
     reorderTaskTemplate(oldIndex, newIndex);
   }
 
@@ -202,14 +142,12 @@ class HomeNotifier extends _$HomeNotifier {
   }
 
   Future<void> updateTasksInDatabase() async {
-
     final batch = FirebaseFirestore.instance.batch();
 
     for (int i = 0; i < taskTemplates.length; i++) {
       final task = taskTemplates[i];
       final docRef =
           FirebaseFirestore.instance.collection('taskTemplates').doc(task.id);
-
       batch.update(docRef, {'priority': i + 1});
     }
 
@@ -217,12 +155,56 @@ class HomeNotifier extends _$HomeNotifier {
   }
 
   Future<List<TaskTemplate>> fetchTaskTemplates() async {
-    QuerySnapshot snapshot = await FirebaseFirestore.instance
-        .collection('taskTemplates')
-        .orderBy('priority')
-        .get();
+    return taskRepository.fetchTaskTemplates(
+      userId: userId!,
+    );
+  }
 
-    return snapshot.docs.map((doc) => TaskTemplate.fromDoc(doc)).toList();
+  Future<void> checkAndGenerateTaskInstances() async {
+    List<TaskTemplate> templates = await fetchTaskTemplates();
+
+    for (TaskTemplate template in templates) {
+      QuerySnapshot snapshot = await FirebaseFirestore.instance
+          .collection('taskInstances')
+          .where(
+            'taskTemplateId',
+            isEqualTo: template.id,
+          )
+          .where('date', isGreaterThanOrEqualTo: Timestamp.now())
+          .orderBy('date')
+          .get();
+
+      TaskInstance taskInstance = TaskInstance.fromDoc(snapshot.docs.last);
+
+      if (template.frequency == TaskFrequency.daily &&
+          snapshot.docs.length < 20) {
+        await createRecurringTask(
+          title: template.title,
+          frequency: template.frequency,
+          startDate: taskInstance.date.add(const Duration(days: 1)),
+          daysAhead: DateTime.now()
+              .add(
+                const Duration(
+                  days: 30,
+                ),
+              )
+              .difference(taskInstance.date)
+              .inDays,
+          taskTemplateId: template.id,
+        );
+      }
+
+      if (template.frequency == TaskFrequency.weekly &&
+          snapshot.docs.length < 3) {
+        await createRecurringTask(
+          title: template.title,
+          frequency: template.frequency,
+          startDate: taskInstance.date.add(const Duration(days: 1)),
+          daysAhead: 4,
+          taskTemplateId: template.id,
+        );
+      }
+    }
   }
 }
 

@@ -1,5 +1,5 @@
-import 'package:auto_admin_app/core/enums/task_frequency.dart';
-import 'package:auto_admin_app/screen/home/home_provider.dart';
+import 'package:auto_admin_app/data/enums/task_frequency.dart';
+import 'package:auto_admin_app/state/home_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';

@@ -1,8 +1,8 @@
-import 'package:auto_admin_app/core/models/task_instance.dart';
-import 'package:auto_admin_app/core/models/task_template.dart';
+import 'package:auto_admin_app/data/models/task_instance.dart';
+import 'package:auto_admin_app/data/models/task_template.dart';
 import 'package:auto_admin_app/router/routes.dart';
-import 'package:auto_admin_app/screen/home/home_provider.dart';
-import 'package:auto_admin_app/screen/home/widget/home_drawer.dart';
+import 'package:auto_admin_app/state/home_provider.dart';
+import 'package:auto_admin_app/presentation/home/widget/home_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
