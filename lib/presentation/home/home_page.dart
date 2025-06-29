@@ -6,7 +6,7 @@ import 'package:auto_admin_app/presentation/home/widget/home_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart' as intl;
 
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
@@ -16,7 +16,7 @@ class HomePage extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
   ) {
-    List<TaskInstance> tasksList = ref.watch(homeNotifierProvider);
+    AsyncValue<List<TaskInstance>> tasksList = ref.watch(homeNotifierProvider);
     DateTime selectedDate = ref.watch(selectedDateProvider);
     return Scaffold(
       drawer: HomeDrawer(),
@@ -52,10 +52,10 @@ class HomePage extends ConsumerWidget {
                     child: Column(
                       children: [
                         Text(
-                          DateFormat('dd').format(date),
+                          intl.DateFormat('dd').format(date),
                         ),
                         Text(
-                          DateFormat('MMM').format(date),
+                          intl.DateFormat('MMM').format(date),
                         ),
                       ],
                     ),
@@ -67,12 +67,15 @@ class HomePage extends ConsumerWidget {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(8.0),
-              child: ReorderableListView(
-                onReorder: (int oldIndex, int newIndex) async {
-                  ref.read(homeNotifierProvider.notifier).updateTaskPriorities(oldIndex, newIndex);
-                },
-                children: [
-                  ...tasksList.map(
+              child: tasksList.when(
+                data: (data) => ReorderableListView(
+                  onReorder: (int oldIndex, int newIndex) async {
+                    ref
+                        .read(homeNotifierProvider.notifier)
+                        .updateTaskPriorities(oldIndex, newIndex);
+                  },
+                  children: [
+                    ...data.map(
                       (task) => InkWell(
                         key: ValueKey(task.id),
                         onTap: () {
@@ -88,6 +91,7 @@ class HomePage extends ConsumerWidget {
                           ),
                           padding: EdgeInsets.symmetric(
                             horizontal: 5,
+                            vertical: 10,
                           ),
                           margin: EdgeInsets.only(
                             bottom: 5,
@@ -115,55 +119,84 @@ class HomePage extends ConsumerWidget {
                                   );
                                 },
                               ),
-                              IconButton(
-                                onPressed: () {
-                                  showDialog(
-                                    context: context,
-                                    builder: (ctx) {
-                                      return AlertDialog(
-                                        title: Icon(
-                                          Icons.warning,
-                                          size: 100,
-                                        ),
-                                        content: Text(
-                                            '¿Quieres eliminar esta tarea?'),
-                                        actions: [
-                                          ElevatedButton(
-                                            onPressed: () async {
-                                              await ref
-                                                  .read(homeNotifierProvider
-                                                      .notifier)
-                                                  .deleteRecurringTask(
-                                                      task.taskTemplateId);
-                                              if (context.mounted) {
-                                                context.pop();
-                                              }
-                                            },
-                                            child: Text('Si, Eliminar'),
-                                          ),
-                                          ElevatedButton(
-                                            onPressed: () {
-                                              context.pop();
-                                            },
-                                            child: Text('No'),
-                                          ),
-                                        ],
-                                      );
+                              MenuAnchor(
+                                menuChildren: [
+                                  ListTile(
+                                    leading: Icon(Icons.delete),
+                                    title: Text('Borrar'),
+                                    onTap: () {
+                                      showDialog(
+                                          context: context,
+                                          builder: (ctx) {
+                                            return AlertDialog(
+                                              title: Icon(
+                                                Icons.warning,
+                                                size: 100,
+                                              ),
+                                              content: Text(
+                                                  '¿Quieres eliminar esta tarea?'),
+                                              actions: [
+                                                ElevatedButton(
+                                                  onPressed: () async {
+                                                    await ref
+                                                        .read(
+                                                            homeNotifierProvider
+                                                                .notifier)
+                                                        .deleteRecurringTask(
+                                                            task.taskTemplateId);
+                                                    if (context.mounted) {
+                                                      context.pop();
+                                                    }
+                                                  },
+                                                  child: Text('Si, Eliminar'),
+                                                ),
+                                                ElevatedButton(
+                                                  onPressed: () {
+                                                    context.pop();
+                                                  },
+                                                  child: Text('No'),
+                                                ),
+                                              ],
+                                            );
+                                          });
                                     },
+                                  ),
+                                ],
+                                builder: (BuildContext context,
+                                    MenuController controller, Widget? child) {
+                                  return GestureDetector(
+                                    onTap: () {
+                                      if (controller.isOpen) {
+                                        controller.close();
+                                      } else {
+                                        controller.open();
+                                      }
+                                    },
+                                    child: child,
                                   );
                                 },
-                                icon: Icon(Icons.more_vert),
+                                child: Icon(
+                                  Icons.more_vert,
+                                ),
                               ),
                             ],
                           ),
                         ),
                       ),
                     ),
-                    ],
-                  ),
+                  ],
+                ),
+                error: (error, trace) => Center(
+                  child: Text(error.toString()),
+                ),
+                loading: () => Center(
+                  child: CircularProgressIndicator(),
+                ),
               ),
-            ),],
+            ),
           ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         child: const Icon(Icons.add),
         onPressed: () {

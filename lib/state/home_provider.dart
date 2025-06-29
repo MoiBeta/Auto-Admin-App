@@ -19,21 +19,31 @@ class HomeNotifier extends _$HomeNotifier {
   String? userId;
 
   @override
-  List<TaskInstance> build() {
-    getTaskInstances(ref.watch(selectedDateProvider));
-    checkAndGenerateTaskInstances();
+  Future<List<TaskInstance>> build() async {
     taskRepository = ref.read(taskRepositoryProvider);
     userId = ref.read(authNotifierProvider)!.uid;
-    return [];
+    List<TaskInstance> tasks =
+        await getTaskInstances(ref.watch(selectedDateProvider));
+    checkAndGenerateTaskInstances();
+    return tasks;
   }
 
-  Future<void> getTaskInstances(DateTime selectedDate) async {
-    Future.microtask(() async {
-      state = await taskRepository.getTaskInstances(
-        selectedDate: selectedDate,
-        userId: userId ?? '',
-      );
-    });
+  Future<List<TaskInstance>> getTaskInstances(DateTime selectedDate) async {
+    return taskRepository.getTaskInstances(
+      selectedDate: selectedDate,
+      userId: userId ?? '',
+    );
+  }
+
+  Future<void> refreshTasks(DateTime date) async {
+    state = const AsyncLoading();
+
+    try {
+      final tasks = await getTaskInstances(date);
+      state = AsyncData(tasks);
+    } catch (e, st) {
+      state = AsyncError(e, st);
+    }
   }
 
   Future<void> createRecurringTask({
@@ -68,13 +78,13 @@ class HomeNotifier extends _$HomeNotifier {
 
   Future<void> completeTask(
       {required String taskInstanceId, required bool completed}) async {
-    List<TaskInstance> instances = List<TaskInstance>.from(state);
+    List<TaskInstance> instances = List<TaskInstance>.from(state.value ?? []);
 
     int index =
         instances.indexWhere((instance) => instance.id == taskInstanceId);
     instances[index].completed = completed;
 
-    state = instances;
+    state = AsyncValue.data(instances);
 
     FirebaseFirestore.instance
         .collection('taskInstances')
@@ -118,8 +128,8 @@ class HomeNotifier extends _$HomeNotifier {
         .where((template) => template.id != taskTemplateId)
         .toList();
 
-    state = List.from(state.where(
-        (taskInstance) => taskInstance.taskTemplateId != taskTemplateId));
+    state = AsyncValue.data(List.from((state.value ?? []).where(
+        (taskInstance) => taskInstance.taskTemplateId != taskTemplateId)));
 
     await batch.commit();
   }
@@ -129,11 +139,11 @@ class HomeNotifier extends _$HomeNotifier {
       newIndex -= 1;
     }
 
-    List<TaskInstance> instances = List.from(state);
+    List<TaskInstance> instances = List.from(state.value ?? []);
 
     final taskItem = instances.removeAt(oldIndex);
     instances.insert(newIndex, taskItem);
-    state = instances;
+    state = AsyncValue.data(instances);
     reorderTaskTemplate(oldIndex, newIndex);
   }
 
@@ -163,48 +173,57 @@ class HomeNotifier extends _$HomeNotifier {
   }
 
   Future<void> checkAndGenerateTaskInstances() async {
-    List<TaskTemplate> templates = await fetchTaskTemplates();
+    taskTemplates = await fetchTaskTemplates();
 
-    for (TaskTemplate template in templates) {
-      QuerySnapshot snapshot = await FirebaseFirestore.instance
-          .collection('taskInstances')
-          .where(
-            'taskTemplateId',
-            isEqualTo: template.id,
-          )
-          .where('date', isGreaterThanOrEqualTo: Timestamp.now())
-          .orderBy('date')
-          .get();
+    if (taskTemplates.isNotEmpty) {
+      for (TaskTemplate template in taskTemplates) {
+        QuerySnapshot snapshot = await FirebaseFirestore.instance
+            .collection('taskInstances')
+            .where(
+              'taskTemplateId',
+              isEqualTo: template.id,
+            )
+            .where('date', isGreaterThanOrEqualTo: Timestamp.now())
+            .orderBy('date')
+            .get();
 
-      TaskInstance taskInstance = TaskInstance.fromDoc(snapshot.docs.last);
+        TaskInstance? taskInstance = snapshot.docs.isNotEmpty
+            ? TaskInstance.fromDoc(snapshot.docs.last)
+            : null;
 
-      if (template.frequency == TaskFrequency.daily &&
-          snapshot.docs.length < 20) {
-        await createRecurringTask(
-          title: template.title,
-          frequency: template.frequency,
-          startDate: taskInstance.date.add(const Duration(days: 1)),
-          daysAhead: DateTime.now()
-              .add(
-                const Duration(
-                  days: 30,
-                ),
-              )
-              .difference(taskInstance.date)
-              .inDays,
-          taskTemplateId: template.id,
-        );
-      }
+        if (template.frequency == TaskFrequency.daily &&
+            snapshot.docs.length < 20) {
+          await createRecurringTask(
+            title: template.title,
+            frequency: template.frequency,
+            startDate: taskInstance != null
+                ? taskInstance.date.add(const Duration(days: 1))
+                : DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day),
+            daysAhead: DateTime.now()
+                .add(
+                  const Duration(
+                    days: 30,
+                  ),
+                )
+                .difference(taskInstance != null
+                ? taskInstance.date : DateTime.now())
+                .inDays,
+            taskTemplateId: template.id,
+          );
+        }
 
-      if (template.frequency == TaskFrequency.weekly &&
-          snapshot.docs.length < 3) {
-        await createRecurringTask(
-          title: template.title,
-          frequency: template.frequency,
-          startDate: taskInstance.date.add(const Duration(days: 1)),
-          daysAhead: 4,
-          taskTemplateId: template.id,
-        );
+        if (template.frequency == TaskFrequency.weekly &&
+            snapshot.docs.length < 3) {
+          await createRecurringTask(
+            title: template.title,
+            frequency: template.frequency,
+            startDate: taskInstance != null
+                ? taskInstance.date.add(const Duration(days: 1))
+                : DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day),
+            daysAhead: 4,
+            taskTemplateId: template.id,
+          );
+        }
       }
     }
   }
@@ -223,6 +242,7 @@ class SelectedDate extends _$SelectedDate {
 
   void selectDate(DateTime date) {
     state = date;
+    ref.read(homeNotifierProvider.notifier).refreshTasks(date);
   }
 }
 
