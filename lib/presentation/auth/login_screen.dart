@@ -13,16 +13,20 @@ class LoginScreen extends ConsumerWidget {
     AuthNotifier authNotifier = ref.read(authNotifierProvider.notifier);
     LoginState? loginState = ref.watch(authNotifierProvider);
     return Scaffold(
-      resizeToAvoidBottomInset: false,
       body: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: 20,
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: ListView(
           children: [
-            Lottie.asset(
-              'assets/animations/task-login.json',
+            Container(
+              margin: EdgeInsets.only(
+                top: 50,
+                bottom: 40,
+              ),
+              child: Lottie.asset(
+                'assets/animations/task-login.json',
+              ),
             ),
             TextFormField(
               controller: authNotifier.emailController,
@@ -35,6 +39,7 @@ class LoginScreen extends ConsumerWidget {
             ),
             TextFormField(
               controller: authNotifier.passwordController,
+              obscureText: true,
               decoration: InputDecoration(
                 hintText: 'Contraseña',
               ),
