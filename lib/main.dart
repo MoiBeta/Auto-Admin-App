@@ -1,4 +1,5 @@
 import 'package:auto_admin_app/firebase_options.dart';
+import 'package:auto_admin_app/presentation/theme/app_theme.dart';
 import 'package:auto_admin_app/router/router.dart';
 import 'package:auto_admin_app/state/auth_provider.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -26,9 +27,12 @@ class MyApp extends ConsumerWidget {
     ref.watch(authNotifierProvider);
     final router = ref.watch(routerProvider);
     return MaterialApp.router(
+      debugShowCheckedModeBanner: false,
       routerDelegate: router.routerDelegate,
       routeInformationParser: router.routeInformationParser,
       routeInformationProvider: router.routeInformationProvider,
+      theme: AppTheme.lightTheme,
+      themeMode: ThemeMode.light, // TODO: Apply change theme options logic
     );
   }
 }
