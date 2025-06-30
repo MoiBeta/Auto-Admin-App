@@ -4,20 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-class LoginScreen extends ConsumerStatefulWidget {
+class LoginScreen extends ConsumerWidget {
   const LoginScreen({super.key});
 
   @override
-  ConsumerState<LoginScreen> createState() => _LoginScreenState();
-}
-
-class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final TextEditingController emailController = TextEditingController();
-
-  final TextEditingController passwordController = TextEditingController();
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    AuthNotifier authNotifier = ref.read(authNotifierProvider.notifier);
     return Scaffold(
       appBar: AppBar(
         title: Text('Iniciar sesión'),
@@ -30,28 +22,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             TextFormField(
-              controller: emailController,
+              controller: authNotifier.emailController,
               decoration: InputDecoration(
                 hintText: 'Correo',
               ),
             ),
             TextFormField(
-              controller: passwordController,
+              controller: authNotifier.passwordController,
               decoration: InputDecoration(
                 hintText: 'Contraseña',
               ),
             ),
             FilledButton(
-                onPressed: () async {
-                  await ref.read(authNotifierProvider.notifier).login(
-                      emailAddress: emailController.text,
-                      password: passwordController.text,
-                  );
-                  if(context.mounted){
-                    context.pushReplacementNamed(Routes.home);
-                  }
-                },
-                child: Text('Iniciar sesión'),
+              onPressed: () async {
+                await ref.read(authNotifierProvider.notifier).login();
+                if (context.mounted) {
+                  context.pushReplacementNamed(Routes.home);
+                }
+              },
+              child: Text('Iniciar sesión'),
             ),
             FilledButton(
                 onPressed: () async {

@@ -1,10 +1,14 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'auth_provider.g.dart';
 
 @Riverpod(keepAlive: true)
 class AuthNotifier extends _$AuthNotifier {
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+
   @override
   User? build() {
     listenUserChanges();
@@ -39,15 +43,12 @@ class AuthNotifier extends _$AuthNotifier {
     }
   }
 
-  Future<void> login({
-    required String emailAddress,
-    required String password,
-  }) async {
+  Future<void> login() async {
     try {
      // final credential =
       await FirebaseAuth.instance.signInWithEmailAndPassword(
-          email: emailAddress,
-          password: password
+          email: emailController.text,
+          password: passwordController.text
       );
     } on FirebaseAuthException catch (e) {
       if (e.code == 'user-not-found') {
