@@ -26,80 +26,86 @@ class _AddingTaskScreenState extends ConsumerState<AddingTaskScreen> {
       appBar: AppBar(
         title: Text('Nueva tarea'),
       ),
-      body: Column(
-        children: [
-          TextFormField(
-            decoration: InputDecoration(hintText: 'Titulo'),
-            controller: titleEditingController,
-          ),
-          GestureDetector(
-            child: TextFormField(
-              controller: dateEditingController,
-              decoration: InputDecoration(hintText: 'Fecha'),
-              enabled: false,
+      body: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          children: [
+            TextFormField(
+              decoration: InputDecoration(hintText: 'Titulo'),
+              controller: titleEditingController,
             ),
-            onTap: () {
-              showDatePicker(
-                context: context,
-                firstDate: DateTime.now(),
-                lastDate: DateTime.now().add(const Duration(days: 360)),
-              ).then(
-                    (date) {
-                  if (date != null) {
-                    setState(
-                          () {
-                        selectedDate = date;
-                        dateEditingController.text =
-                            DateFormat('MMM dd yyyy').format(date);
-                      },
-                    );
-                  }
-                },
-              );
-            },
-          ),
-          DropdownButton(
-            items: TaskFrequency.values.map((TaskFrequency taskFrequency) {
-              return DropdownMenuItem(
-                value: taskFrequency,
-                child: Text(
-                    getNameFromTaskFrequency(taskFrequency),
-                  style: TextStyle(
-                    color: Colors.black,
-                  ),
-                ),
-              );
-            }).toList(),
-            value: taskFrequency,
-            style: TextStyle(
-              color: Colors.black,
+            const SizedBox(
+              height: 10,
             ),
-            onChanged: (TaskFrequency? value) {
-              if (value != null) {
-                setState(() {
-                  taskFrequency = value;
-                });
-              }
-            },
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (titleEditingController.text.isNotEmpty){
-                await ref.read(homeNotifierProvider.notifier).createRecurringTask(
-                  title: titleEditingController.text,
-                  frequency: taskFrequency,
-                  startDate: selectedDate,
+            GestureDetector(
+              child: TextFormField(
+                controller: dateEditingController,
+                decoration: InputDecoration(hintText: 'Fecha'),
+                enabled: false,
+              ),
+              onTap: () {
+                showDatePicker(
+                  context: context,
+                  firstDate: DateTime.now(),
+                  lastDate: DateTime.now().add(const Duration(days: 360)),
+                ).then(
+                      (date) {
+                    if (date != null) {
+                      setState(
+                            () {
+                          selectedDate = date;
+                          dateEditingController.text =
+                              DateFormat('MMM dd yyyy').format(date);
+                        },
+                      );
+                    }
+                  },
                 );
-              }
-              if(context.mounted){
-                context.pop();
-              }
-            },
-            child: ref.watch(isLoadingProvider)
-                ? CircularProgressIndicator()
-                : Text('Agregar'),
-          ),
-        ],
+              },
+            ),
+            DropdownButton(
+              items: TaskFrequency.values.map((TaskFrequency taskFrequency) {
+                return DropdownMenuItem(
+                  value: taskFrequency,
+                  child: Text(
+                      getNameFromTaskFrequency(taskFrequency),
+                    style: TextStyle(
+                      color: Colors.black,
+                    ),
+                  ),
+                );
+              }).toList(),
+              value: taskFrequency,
+              style: TextStyle(
+                color: Colors.black,
+              ),
+              onChanged: (TaskFrequency? value) {
+                if (value != null) {
+                  setState(() {
+                    taskFrequency = value;
+                  });
+                }
+              },
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (titleEditingController.text.isNotEmpty){
+                  await ref.read(homeNotifierProvider.notifier).createRecurringTask(
+                    title: titleEditingController.text,
+                    frequency: taskFrequency,
+                    startDate: selectedDate,
+                  );
+                }
+                if(context.mounted){
+                  context.pop();
+                }
+              },
+              child: ref.watch(isLoadingProvider)
+                  ? CircularProgressIndicator()
+                  : Text('Agregar'),
+            ),
+          ],
+        ),
       ),
     );
   }
