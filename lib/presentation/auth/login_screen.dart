@@ -12,7 +12,6 @@ class LoginScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     AuthNotifier authNotifier = ref.read(authNotifierProvider.notifier);
     return Scaffold(
-      backgroundColor: Color(0xFFF5F5F5),
       body: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: 20,
@@ -29,11 +28,17 @@ class LoginScreen extends ConsumerWidget {
                 hintText: 'Correo',
               ),
             ),
+            const SizedBox(
+              height: 10,
+            ),
             TextFormField(
               controller: authNotifier.passwordController,
               decoration: InputDecoration(
                 hintText: 'Contraseña',
               ),
+            ),
+            const SizedBox(
+              height: 10,
             ),
             FilledButton(
               onPressed: () async {
