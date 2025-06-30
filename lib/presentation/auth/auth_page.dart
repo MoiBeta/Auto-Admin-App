@@ -24,9 +24,13 @@ class AuthPage extends StatelessWidget {
                 Text(
                     'Toma el control de tu vida',
                   textAlign: TextAlign.start,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontSize: 30,
+                  ),
                 ),
                 Text('Empieza ahora...',
                   textAlign: TextAlign.start,
+                  style: Theme.of(context).textTheme.titleLarge,
                 ),
               ],
             ),
