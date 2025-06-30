@@ -12,9 +12,7 @@ class LoginScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     AuthNotifier authNotifier = ref.read(authNotifierProvider.notifier);
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Iniciar sesión'),
-      ),
+      backgroundColor: Color(0xFFF5F5F5),
       body: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: 20,
@@ -47,10 +45,10 @@ class LoginScreen extends ConsumerWidget {
               child: Text('Iniciar sesión'),
             ),
             FilledButton(
-                onPressed: () async {
-                  context.pushReplacementNamed(Routes.register);
-                },
-                child: Text('Crear cuenta'),
+              onPressed: () async {
+                context.pushReplacementNamed(Routes.register);
+              },
+              child: Text('Crear cuenta'),
             ),
           ],
         ),
