@@ -104,20 +104,29 @@ class HomePage extends ConsumerWidget {
                                     ? Icons.check_box
                                     : Icons.check_box_outline_blank,
                               ),
-                              FutureBuilder(
-                                future: ref
-                                    .read(homeNotifierProvider.notifier)
-                                    .getTaskTemplateFromId(task.taskTemplateId),
-                                builder: (context,
-                                    AsyncSnapshot<TaskTemplate?> snapshot) {
-                                  if (snapshot.hasData) {
-                                    TaskTemplate taskTemplate = snapshot.data!;
-                                    return Text(taskTemplate.title);
-                                  }
-                                  return Center(
-                                    child: CircularProgressIndicator(),
-                                  );
-                                },
+                              Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: FutureBuilder(
+                                    future: ref
+                                        .read(homeNotifierProvider.notifier)
+                                        .getTaskTemplateFromId(task.taskTemplateId),
+                                    builder: (context,
+                                        AsyncSnapshot<TaskTemplate?> snapshot) {
+                                      if (snapshot.hasData) {
+                                        TaskTemplate taskTemplate = snapshot.data!;
+                                        return Text(
+                                            taskTemplate.title,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        );
+                                      }
+                                      return Center(
+                                        child: CircularProgressIndicator(),
+                                      );
+                                    },
+                                  ),
+                                ),
                               ),
                               MenuAnchor(
                                 menuChildren: [
