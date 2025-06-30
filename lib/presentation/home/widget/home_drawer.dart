@@ -32,7 +32,7 @@ class HomeDrawer extends ConsumerWidget {
                 onTap: () async {
                   await ref.read(authNotifierProvider.notifier).logout();
                   if (context.mounted) {
-                    context.pushReplacementNamed(Routes.login);
+                    context.pushReplacementNamed(Routes.auth);
                   }
                 },
               ),
