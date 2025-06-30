@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 
 import 'color_schemes.dart';
+import 'input_decoration.dart';
 
 class AppTheme {
   static ThemeData get lightTheme => ThemeData(
@@ -13,6 +14,7 @@ class AppTheme {
       headlineLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
       bodyMedium: TextStyle(fontSize: 16),
     ),
+    inputDecorationTheme: lightInputDecorationTheme,
   );
 
   static ThemeData get darkTheme => ThemeData(
