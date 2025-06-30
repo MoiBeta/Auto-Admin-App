@@ -21,7 +21,7 @@ class HomeNotifier extends _$HomeNotifier {
   @override
   Future<List<TaskInstance>> build() async {
     taskRepository = ref.read(taskRepositoryProvider);
-    userId = ref.read(authNotifierProvider)!.uid;
+    userId = ref.read(authNotifierProvider)!.user?.uid;
     List<TaskInstance> tasks =
         await getTaskInstances(ref.watch(selectedDateProvider));
     checkAndGenerateTaskInstances();

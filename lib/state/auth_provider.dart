@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'auth_provider.g.dart';
@@ -10,58 +11,117 @@ class AuthNotifier extends _$AuthNotifier {
   final TextEditingController passwordController = TextEditingController();
 
   @override
-  User? build() {
+  LoginState? build() {
     listenUserChanges();
-    return FirebaseAuth.instance.currentUser;
+    return LoginState(
+      user: FirebaseAuth.instance.currentUser,
+    );
   }
 
   void listenUserChanges() {
-    FirebaseAuth.instance
-        .authStateChanges()
-        .listen((User? user) {
-      state = user;
+    FirebaseAuth.instance.authStateChanges().listen((User? user) {
+      state = state?.copyWith(
+        user: user,
+      );
     });
   }
 
   Future<void> register({
     required String emailAddress,
     required String password,
-}) async {
+  }) async {
     try {
-      /*final credential =*/ await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      state = state?.copyWith(
+        isLoading: true,
+      );
+      await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: emailAddress,
         password: password,
       );
     } on FirebaseAuthException catch (e) {
       if (e.code == 'weak-password') {
-        print('The password provided is too weak.');
+        state = state?.copyWith(
+          isLoading: false,
+          hasError: true,
+          errorMessage: 'The password provided is too weak.',
+        );
       } else if (e.code == 'email-already-in-use') {
-        print('The account already exists for that email.');
+        state = state?.copyWith(
+          isLoading: false,
+          hasError: true,
+          errorMessage: 'The account already exists for that email.',
+        );
       }
     } catch (e) {
-      print(e);
+      state = state?.copyWith(
+        isLoading: false,
+        hasError: true,
+        errorMessage: e.toString(),
+      );
     }
+    state = state?.copyWith(
+      isLoading: false,
+    );
   }
 
   Future<void> login() async {
     try {
-     // final credential =
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
-          email: emailController.text,
-          password: passwordController.text
+      state = state?.copyWith(
+        isLoading: true,
       );
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+          email: emailController.text, password: passwordController.text);
     } on FirebaseAuthException catch (e) {
       if (e.code == 'user-not-found') {
-        print('No user found for that email.');
+        state = state?.copyWith(
+          isLoading: false,
+          hasError: true,
+          errorMessage: 'No user found for that email.',
+        );
       } else if (e.code == 'wrong-password') {
-        print('Wrong password provided for that user.');
+        state = state?.copyWith(
+          isLoading: false,
+          hasError: true,
+          errorMessage: 'Wrong password provided for that user.',
+        );
       }
     }
+    state = state?.copyWith(
+      isLoading: false,
+    );
   }
 
   Future<void> logout() async {
     await FirebaseAuth.instance.signOut();
   }
 
-  bool isAuthenticated() => state != null;
+  bool isAuthenticated() => state?.user != null;
+}
+
+class LoginState {
+  final User? user;
+  final bool isLoading;
+  final bool hasError;
+  final String? errorMessage;
+
+  const LoginState({
+    this.isLoading = false,
+    this.hasError = false,
+    this.user,
+    this.errorMessage,
+  });
+
+  LoginState copyWith({
+    bool? isLoading,
+    bool? hasError,
+    String? errorMessage,
+    User? user,
+  }) {
+    return LoginState(
+      isLoading: isLoading ?? this.isLoading,
+      hasError: hasError ?? this.hasError,
+      user: user ?? this.user,
+      errorMessage: errorMessage ?? this.errorMessage,
+    );
+  }
 }

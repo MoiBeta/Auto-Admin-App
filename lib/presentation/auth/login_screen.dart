@@ -11,7 +11,9 @@ class LoginScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     AuthNotifier authNotifier = ref.read(authNotifierProvider.notifier);
+    LoginState? loginState = ref.watch(authNotifierProvider);
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       body: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: 20,
@@ -47,7 +49,12 @@ class LoginScreen extends ConsumerWidget {
                   context.pushReplacementNamed(Routes.home);
                 }
               },
-              child: Text('Iniciar sesión'),
+              child: (loginState?.isLoading ?? false)
+                  ? SizedBox(
+                height: 20,
+                  child: CircularProgressIndicator(),
+              )
+                  : Text('Iniciar sesión'),
             ),
             FilledButton(
               onPressed: () async {
