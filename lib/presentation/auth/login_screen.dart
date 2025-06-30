@@ -3,6 +3,7 @@ import 'package:auto_admin_app/state/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lottie/lottie.dart';
 
 class LoginScreen extends ConsumerWidget {
   const LoginScreen({super.key});
@@ -21,6 +22,9 @@ class LoginScreen extends ConsumerWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            Lottie.asset(
+              'assets/animations/task-login.json',
+            ),
             TextFormField(
               controller: authNotifier.emailController,
               decoration: InputDecoration(
