@@ -1,4 +1,5 @@
 import 'package:auto_admin_app/data/enums/task_frequency.dart';
+import 'package:auto_admin_app/data/models/task_template.dart';
 import 'package:auto_admin_app/state/home_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,7 +7,9 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 class AddingTaskScreen extends ConsumerStatefulWidget {
-  const AddingTaskScreen({super.key});
+  const AddingTaskScreen({this.taskTemplate, super.key});
+
+  final TaskTemplate? taskTemplate;
 
   @override
   ConsumerState<AddingTaskScreen> createState() => _AddingTaskScreenState();
@@ -19,12 +22,27 @@ class _AddingTaskScreenState extends ConsumerState<AddingTaskScreen> {
   DateTime selectedDate = DateTime.now();
 
   @override
+  void initState() {
+    if (widget.taskTemplate != null) {
+      TaskTemplate taskTemplate = widget.taskTemplate!;
+      titleEditingController.text = taskTemplate.title;
+      selectedDate = taskTemplate.startDate;
+      dateEditingController.text =
+          DateFormat('MMM dd yyyy').format(taskTemplate.startDate);
+      taskFrequency = taskTemplate.frequency;
+    }
+    super.initState();
+  }
+
+  @override
   Widget build(
     BuildContext context,
   ) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Nueva tarea'),
+        title: Text(
+          widget.taskTemplate == null ? 'Nueva tarea' : 'Editar tarea',
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(8.0),
@@ -49,10 +67,10 @@ class _AddingTaskScreenState extends ConsumerState<AddingTaskScreen> {
                   firstDate: DateTime.now(),
                   lastDate: DateTime.now().add(const Duration(days: 360)),
                 ).then(
-                      (date) {
+                  (date) {
                     if (date != null) {
                       setState(
-                            () {
+                        () {
                           selectedDate = date;
                           dateEditingController.text =
                               DateFormat('MMM dd yyyy').format(date);
@@ -68,7 +86,7 @@ class _AddingTaskScreenState extends ConsumerState<AddingTaskScreen> {
                 return DropdownMenuItem(
                   value: taskFrequency,
                   child: Text(
-                      getNameFromTaskFrequency(taskFrequency),
+                    getNameFromTaskFrequency(taskFrequency),
                     style: TextStyle(
                       color: Colors.black,
                     ),
@@ -89,20 +107,26 @@ class _AddingTaskScreenState extends ConsumerState<AddingTaskScreen> {
             ),
             ElevatedButton(
               onPressed: () async {
-                if (titleEditingController.text.isNotEmpty){
-                  await ref.read(homeNotifierProvider.notifier).createRecurringTask(
-                    title: titleEditingController.text,
-                    frequency: taskFrequency,
-                    startDate: selectedDate,
-                  );
+                if (titleEditingController.text.isNotEmpty) {
+                  await ref
+                      .read(homeNotifierProvider.notifier)
+                      .createEditRecurringTask(
+                        taskTemplateId: widget.taskTemplate?.id,
+                        title: titleEditingController.text,
+                        frequency: taskFrequency,
+                        startDate: selectedDate,
+                        mustUpdate: widget.taskTemplate?.id != null,
+                      );
                 }
-                if(context.mounted){
+                if (context.mounted) {
                   context.pop();
                 }
               },
               child: ref.watch(isLoadingProvider)
                   ? CircularProgressIndicator()
-                  : Text('Agregar'),
+                  : Text(
+                      widget.taskTemplate == null ? 'Agregar' : 'Editar',
+                    ),
             ),
           ],
         ),
@@ -110,8 +134,8 @@ class _AddingTaskScreenState extends ConsumerState<AddingTaskScreen> {
     );
   }
 
-  String getNameFromTaskFrequency(TaskFrequency taskFrequency){
-    switch(taskFrequency){
+  String getNameFromTaskFrequency(TaskFrequency taskFrequency) {
+    switch (taskFrequency) {
       case TaskFrequency.none:
         return 'Ninguno';
       case TaskFrequency.daily:

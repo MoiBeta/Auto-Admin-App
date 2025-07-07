@@ -1,5 +1,5 @@
 import 'package:auto_admin_app/data/models/task_instance.dart';
-import 'package:auto_admin_app/data/models/task_template.dart';
+import 'package:auto_admin_app/presentation/home/widget/task_list_tile.dart';
 import 'package:auto_admin_app/router/routes.dart';
 import 'package:auto_admin_app/state/home_provider.dart';
 import 'package:auto_admin_app/presentation/home/widget/home_drawer.dart';
@@ -76,121 +76,9 @@ class HomePage extends ConsumerWidget {
                   },
                   children: [
                     ...data.map(
-                      (task) => InkWell(
+                      (TaskInstance task) => TaskListTile(
+                        task: task,
                         key: ValueKey(task.id),
-                        onTap: () {
-                          ref.read(homeNotifierProvider.notifier).completeTask(
-                                taskInstanceId: task.id,
-                                completed: !task.completed,
-                              );
-                        },
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.grey.withAlpha(50),
-                            borderRadius: BorderRadius.circular(5),
-                          ),
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 5,
-                            vertical: 10,
-                          ),
-                          margin: EdgeInsets.only(
-                            bottom: 5,
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Icon(
-                                task.completed
-                                    ? Icons.check_box
-                                    : Icons.check_box_outline_blank,
-                              ),
-                              Expanded(
-                                child: Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: FutureBuilder(
-                                    future: ref
-                                        .read(homeNotifierProvider.notifier)
-                                        .getTaskTemplateFromId(task.taskTemplateId),
-                                    builder: (context,
-                                        AsyncSnapshot<TaskTemplate?> snapshot) {
-                                      if (snapshot.hasData) {
-                                        TaskTemplate taskTemplate = snapshot.data!;
-                                        return Text(
-                                            taskTemplate.title,
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                        );
-                                      }
-                                      return Center(
-                                        child: CircularProgressIndicator(),
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ),
-                              MenuAnchor(
-                                menuChildren: [
-                                  ListTile(
-                                    leading: Icon(Icons.delete),
-                                    title: Text('Borrar'),
-                                    onTap: () {
-                                      showDialog(
-                                          context: context,
-                                          builder: (ctx) {
-                                            return AlertDialog(
-                                              title: Icon(
-                                                Icons.warning,
-                                                size: 100,
-                                              ),
-                                              content: Text(
-                                                  '¿Quieres eliminar esta tarea?'),
-                                              actions: [
-                                                ElevatedButton(
-                                                  onPressed: () async {
-                                                    await ref
-                                                        .read(
-                                                            homeNotifierProvider
-                                                                .notifier)
-                                                        .deleteRecurringTask(
-                                                            task.taskTemplateId);
-                                                    if (context.mounted) {
-                                                      context.pop();
-                                                    }
-                                                  },
-                                                  child: Text('Si, Eliminar'),
-                                                ),
-                                                ElevatedButton(
-                                                  onPressed: () {
-                                                    context.pop();
-                                                  },
-                                                  child: Text('No'),
-                                                ),
-                                              ],
-                                            );
-                                          });
-                                    },
-                                  ),
-                                ],
-                                builder: (BuildContext context,
-                                    MenuController controller, Widget? child) {
-                                  return GestureDetector(
-                                    onTap: () {
-                                      if (controller.isOpen) {
-                                        controller.close();
-                                      } else {
-                                        controller.open();
-                                      }
-                                    },
-                                    child: child,
-                                  );
-                                },
-                                child: Icon(
-                                  Icons.more_vert,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                       ),
                     ),
                   ],

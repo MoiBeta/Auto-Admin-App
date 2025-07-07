@@ -146,4 +146,116 @@ class FirestoreTaskRepository implements TaskRepository {
 
     return taskInstances;
   }
+
+  @override
+  Future updateTaskTemplate({
+    required String taskTemplateId,
+    required String userId,
+    required String title,
+    required TaskFrequency frequency,
+    required DateTime startDate,
+    List<DateTime> reminders = const [],
+    List<Subtask> subtasks = const [],
+    int priority = 0,
+  }) async {
+    final taskTemplateRef =
+        firestore.collection('taskTemplates').doc(taskTemplateId);
+    await taskTemplateRef.update({
+      'userId': userId,
+      'title': title,
+      'frequency': frequency.name,
+      'startDate': Timestamp.fromDate(startDate),
+      'reminders': reminders.map((e) => e.toIso8601String()).toList(),
+      'subtasks': subtasks
+          .map((s) => {'id': s.id, 'title': s.title, 'completed': false})
+          .toList(),
+      'priority': priority,
+    });
+    return taskTemplateRef.id;
+  }
+
+  @override
+  Future<void> updateRecurringTaskInstances({
+    required String userId,
+    required String taskTemplateId,
+    required DateTime startDate,
+    required TaskFrequency frequency,
+    int daysAhead = 30,
+  }) async {
+    WriteBatch deleteBatch = firestore.batch();
+    WriteBatch batch = firestore.batch();
+
+    final taskInstances = await firestore
+        .collection("taskInstances")
+        .where("taskTemplateId", isEqualTo: taskTemplateId)
+        .where('date', isGreaterThanOrEqualTo: startDate)
+        .get();
+
+    for (var doc in taskInstances.docs) {
+      deleteBatch.delete(doc.reference);
+    }
+
+    await deleteBatch.commit();
+
+    List<Map<String, dynamic>> newTaskInstances = [];
+    DateTime currentDate = startDate;
+    for (int i = 0; i < daysAhead; i++) {
+      newTaskInstances.add({
+        'userId': userId,
+        'taskTemplateId': taskTemplateId,
+        'date': Timestamp.fromDate(currentDate),
+        'completed': false,
+        'completedAt': null,
+      });
+
+      switch (frequency) {
+        case TaskFrequency.daily:
+          currentDate = currentDate.add(Duration(days: 1));
+          break;
+        case TaskFrequency.weekly:
+          currentDate = currentDate.add(Duration(days: 7));
+          break;
+        case TaskFrequency.monthly:
+          currentDate = DateTime(
+              currentDate.year, currentDate.month + 1, currentDate.day);
+          break;
+        case TaskFrequency.yearly:
+          currentDate = DateTime(
+              currentDate.year + 1, currentDate.month, currentDate.day);
+          break;
+        case TaskFrequency.none:
+          break;
+        case TaskFrequency.custom:
+          // TODO: Handle this case.
+          throw UnimplementedError();
+      }
+    }
+
+    DocumentReference<Map<String, dynamic>> docRef =
+        firestore.collection('taskInstances').doc();
+    for (var task in newTaskInstances) {
+      batch.set(docRef, task);
+    }
+    await batch.commit();
+  }
+
+  @override
+  Future<void> deleteRecurringTask(String taskTemplateId) async {
+    final FirebaseFirestore firestore = FirebaseFirestore.instance;
+    final WriteBatch batch = firestore.batch();
+
+    final taskInstances = await firestore
+        .collection("taskInstances")
+        .where("taskTemplateId", isEqualTo: taskTemplateId)
+        .get();
+
+    for (var doc in taskInstances.docs) {
+      batch.delete(doc.reference);
+    }
+
+    final taskTemplateRef =
+        firestore.collection("taskTemplates").doc(taskTemplateId);
+    batch.delete(taskTemplateRef);
+    await batch.commit();
+  }
 }

@@ -46,7 +46,7 @@ class HomeNotifier extends _$HomeNotifier {
     }
   }
 
-  Future<void> createRecurringTask({
+  Future<void> createEditRecurringTask({
     required String title,
     required TaskFrequency frequency,
     required DateTime startDate,
@@ -54,23 +54,42 @@ class HomeNotifier extends _$HomeNotifier {
     List<Subtask> subtasks = const [],
     int daysAhead = 30,
     String? taskTemplateId,
+    bool? mustUpdate,
   }) async {
     ref.read(isLoadingProvider.notifier).setLoading(true);
 
-    taskTemplateId ??= await taskRepository.createTaskTemplate(
-      userId: userId!,
-      title: title,
-      frequency: frequency,
-      startDate: startDate,
-      priority: taskTemplates.length + 2,
-    );
+    if (taskTemplateId == null) {
+      taskTemplateId = await taskRepository.createTaskTemplate(
+        userId: userId!,
+        title: title,
+        frequency: frequency,
+        startDate: startDate,
+        priority: taskTemplates.length + 2,
+      );
 
-    await taskRepository.createRecurringTaskInstances(
-      userId: userId!,
-      taskTemplateId: taskTemplateId,
-      startDate: startDate,
-      frequency: frequency,
-    );
+      await taskRepository.createRecurringTaskInstances(
+        userId: userId!,
+        taskTemplateId: taskTemplateId,
+        startDate: startDate,
+        frequency: frequency,
+      );
+    } else if(mustUpdate ?? false) {
+      await taskRepository.updateTaskTemplate(
+        taskTemplateId: taskTemplateId,
+        userId: userId!,
+        title: title,
+        frequency: frequency,
+        startDate: startDate,
+        priority: taskTemplates.length + 2,
+      );
+
+      await taskRepository.updateRecurringTaskInstances(
+        userId: userId!,
+        taskTemplateId: taskTemplateId,
+        startDate: startDate,
+        frequency: frequency,
+      );
+    }
 
     await getTaskInstances(ref.watch(selectedDateProvider));
     ref.read(isLoadingProvider.notifier).setLoading(false);
@@ -108,30 +127,18 @@ class HomeNotifier extends _$HomeNotifier {
   }
 
   Future<void> deleteRecurringTask(String taskTemplateId) async {
-    final FirebaseFirestore firestore = FirebaseFirestore.instance;
-    final WriteBatch batch = firestore.batch();
-
-    final taskInstances = await firestore
-        .collection("taskInstances")
-        .where("taskTemplateId", isEqualTo: taskTemplateId)
-        .get();
-
-    for (var doc in taskInstances.docs) {
-      batch.delete(doc.reference);
-    }
-
-    final taskTemplateRef =
-        firestore.collection("taskTemplates").doc(taskTemplateId);
-    batch.delete(taskTemplateRef);
+    taskRepository.deleteRecurringTask(taskTemplateId);
 
     taskTemplates = taskTemplates
         .where((template) => template.id != taskTemplateId)
         .toList();
 
-    state = AsyncValue.data(List.from((state.value ?? []).where(
-        (taskInstance) => taskInstance.taskTemplateId != taskTemplateId)));
-
-    await batch.commit();
+    state = AsyncValue.data(
+      List.from(
+        (state.value ?? []).where(
+            (taskInstance) => taskInstance.taskTemplateId != taskTemplateId),
+      ),
+    );
   }
 
   Future<void> updateTaskPriorities(int oldIndex, int newIndex) async {
@@ -193,20 +200,21 @@ class HomeNotifier extends _$HomeNotifier {
 
         if (template.frequency == TaskFrequency.daily &&
             snapshot.docs.length < 20) {
-          await createRecurringTask(
+          await createEditRecurringTask(
             title: template.title,
             frequency: template.frequency,
             startDate: taskInstance != null
                 ? taskInstance.date.add(const Duration(days: 1))
-                : DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day),
+                : DateTime(DateTime.now().year, DateTime.now().month,
+                    DateTime.now().day),
             daysAhead: DateTime.now()
                 .add(
                   const Duration(
                     days: 30,
                   ),
                 )
-                .difference(taskInstance != null
-                ? taskInstance.date : DateTime.now())
+                .difference(
+                    taskInstance != null ? taskInstance.date : DateTime.now())
                 .inDays,
             taskTemplateId: template.id,
           );
@@ -214,12 +222,13 @@ class HomeNotifier extends _$HomeNotifier {
 
         if (template.frequency == TaskFrequency.weekly &&
             snapshot.docs.length < 3) {
-          await createRecurringTask(
+          await createEditRecurringTask(
             title: template.title,
             frequency: template.frequency,
             startDate: taskInstance != null
                 ? taskInstance.date.add(const Duration(days: 1))
-                : DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day),
+                : DateTime(DateTime.now().year, DateTime.now().month,
+                    DateTime.now().day),
             daysAhead: 4,
             taskTemplateId: template.id,
           );

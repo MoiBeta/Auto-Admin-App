@@ -31,4 +31,26 @@ abstract class TaskRepository {
     int daysAhead = 30,
   });
 
+  Future updateTaskTemplate({
+    required String taskTemplateId,
+    required String userId,
+    required String title,
+    required TaskFrequency frequency,
+    required DateTime startDate,
+    List<DateTime> reminders = const [],
+    List<Subtask> subtasks = const [],
+    int priority = 0,
+  }) async {
+
+  }
+
+  Future<void> updateRecurringTaskInstances({
+    required String userId,
+    required String taskTemplateId,
+    required DateTime startDate,
+    required TaskFrequency frequency,
+    int daysAhead = 30,
+  }) async {}
+
+  Future<void> deleteRecurringTask(String taskTemplateId) async {}
 }

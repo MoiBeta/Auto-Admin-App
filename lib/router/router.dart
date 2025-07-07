@@ -1,3 +1,4 @@
+import 'package:auto_admin_app/data/models/task_template.dart';
 import 'package:auto_admin_app/presentation/auth/auth_page.dart';
 import 'package:auto_admin_app/router/routes.dart';
 import 'package:auto_admin_app/state/auth_provider.dart';
@@ -39,13 +40,19 @@ GoRouter router(Ref ref) {
       GoRoute(
         path: Routes.addingTask,
         name: Routes.addingTask,
-        builder: (context, state) => const AddingTaskScreen(),
+        builder: (context, state) => AddingTaskScreen(
+          taskTemplate:
+              state.extra != null ? state.extra as TaskTemplate? : null,
+        ),
       ),
     ],
     redirect: (context, state) {
       String currentRoute = state.uri.toString();
-      final isAuthenticated = ref.read(authNotifierProvider.notifier).isAuthenticated();
-      if (!isAuthenticated && currentRoute != Routes.login && currentRoute != Routes.register) {
+      final isAuthenticated =
+          ref.read(authNotifierProvider.notifier).isAuthenticated();
+      if (!isAuthenticated &&
+          currentRoute != Routes.login &&
+          currentRoute != Routes.register) {
         return Routes.auth;
       }
       return null;
