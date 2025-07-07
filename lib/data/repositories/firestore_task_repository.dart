@@ -231,11 +231,11 @@ class FirestoreTaskRepository implements TaskRepository {
       }
     }
 
-    DocumentReference<Map<String, dynamic>> docRef =
-        firestore.collection('taskInstances').doc();
     for (var task in newTaskInstances) {
+      final docRef = firestore.collection('taskInstances').doc();
       batch.set(docRef, task);
     }
+
     await batch.commit();
   }
 

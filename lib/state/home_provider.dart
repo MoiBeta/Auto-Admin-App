@@ -57,6 +57,7 @@ class HomeNotifier extends _$HomeNotifier {
     bool? mustUpdate,
   }) async {
     ref.read(isLoadingProvider.notifier).setLoading(true);
+    taskTemplates = await fetchTaskTemplates();
 
     if (taskTemplateId == null) {
       taskTemplateId = await taskRepository.createTaskTemplate(
@@ -64,7 +65,7 @@ class HomeNotifier extends _$HomeNotifier {
         title: title,
         frequency: frequency,
         startDate: startDate,
-        priority: taskTemplates.length + 2,
+        priority: taskTemplates.length + 1,
       );
 
       await taskRepository.createRecurringTaskInstances(
@@ -73,14 +74,14 @@ class HomeNotifier extends _$HomeNotifier {
         startDate: startDate,
         frequency: frequency,
       );
-    } else if(mustUpdate ?? false) {
+    } else if (mustUpdate ?? false) {
       await taskRepository.updateTaskTemplate(
         taskTemplateId: taskTemplateId,
         userId: userId!,
         title: title,
         frequency: frequency,
         startDate: startDate,
-        priority: taskTemplates.length + 2,
+        priority: taskTemplates.length + 1,
       );
 
       await taskRepository.updateRecurringTaskInstances(
@@ -91,7 +92,11 @@ class HomeNotifier extends _$HomeNotifier {
       );
     }
 
-    await getTaskInstances(ref.watch(selectedDateProvider));
+    state = AsyncData(
+      await getTaskInstances(
+        ref.watch(selectedDateProvider),
+      ),
+    );
     ref.read(isLoadingProvider.notifier).setLoading(false);
   }
 
