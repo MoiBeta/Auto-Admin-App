@@ -23,76 +23,78 @@ class HomePage extends ConsumerWidget {
       appBar: AppBar(
         title: Text('Home'),
       ),
-      body: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              ...getDateTimeRange().map(
-                (date) => GestureDetector(
-                  onTap: () {
-                    ref.read(selectedDateProvider.notifier).selectDate(date);
-                  },
-                  child: Container(
-                    margin: EdgeInsets.symmetric(
-                      horizontal: 5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(5),
-                      border: selectedDate.month == date.month &&
-                              selectedDate.day == date.day
-                          ? Border.all(
-                              width: 2,
-                              color: Colors.black,
-                            )
-                          : null,
-                    ),
-                    padding: EdgeInsets.all(5),
-                    child: Column(
-                      children: [
-                        Text(
-                          intl.DateFormat('dd').format(date),
-                        ),
-                        Text(
-                          intl.DateFormat('MMM').format(date),
-                        ),
-                      ],
+      body: SafeArea(
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                ...getDateTimeRange().map(
+                  (date) => GestureDetector(
+                    onTap: () {
+                      ref.read(selectedDateProvider.notifier).selectDate(date);
+                    },
+                    child: Container(
+                      margin: EdgeInsets.symmetric(
+                        horizontal: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(5),
+                        border: selectedDate.month == date.month &&
+                                selectedDate.day == date.day
+                            ? Border.all(
+                                width: 2,
+                                color: Colors.black,
+                              )
+                            : null,
+                      ),
+                      padding: EdgeInsets.all(5),
+                      child: Column(
+                        children: [
+                          Text(
+                            intl.DateFormat('dd').format(date),
+                          ),
+                          Text(
+                            intl.DateFormat('MMM').format(date),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: tasksList.when(
-                data: (data) => ReorderableListView(
-                  onReorder: (int oldIndex, int newIndex) async {
-                    ref
-                        .read(homeNotifierProvider.notifier)
-                        .updateTaskPriorities(oldIndex, newIndex);
-                  },
-                  children: [
-                    ...data.map(
-                      (TaskInstance task) => TaskListTile(
-                        task: task,
-                        key: ValueKey(task.id),
+              ],
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: tasksList.when(
+                  data: (data) => ReorderableListView(
+                    onReorder: (int oldIndex, int newIndex) async {
+                      ref
+                          .read(homeNotifierProvider.notifier)
+                          .updateTaskPriorities(oldIndex, newIndex);
+                    },
+                    children: [
+                      ...data.map(
+                        (TaskInstance task) => TaskListTile(
+                          task: task,
+                          key: ValueKey(task.id),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                error: (error, trace) => Center(
-                  child: Text(error.toString()),
-                ),
-                loading: () => Center(
-                  child: CircularProgressIndicator(),
+                    ],
+                  ),
+                  error: (error, trace) => Center(
+                    child: Text(error.toString()),
+                  ),
+                  loading: () => Center(
+                    child: CircularProgressIndicator(),
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         child: const Icon(Icons.add),
