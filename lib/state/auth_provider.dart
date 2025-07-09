@@ -35,7 +35,7 @@ class AuthNotifier extends _$AuthNotifier {
         isLoading: true,
       );
       await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: emailAddress,
+        email: emailAddress.trim(),
         password: password,
       );
     } on FirebaseAuthException catch (e) {
@@ -70,7 +70,9 @@ class AuthNotifier extends _$AuthNotifier {
         isLoading: true,
       );
       await FirebaseAuth.instance.signInWithEmailAndPassword(
-          email: emailController.text, password: passwordController.text);
+        email: emailController.text.trim(),
+        password: passwordController.text,
+      );
     } on FirebaseAuthException catch (e) {
       if (e.code == 'user-not-found') {
         state = state?.copyWith(
