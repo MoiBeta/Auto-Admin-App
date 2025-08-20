@@ -1,6 +1,6 @@
 import 'package:auto_admin_app/data/enums/task_frequency.dart';
-import 'package:auto_admin_app/data/models/sub_task.dart';
-import 'package:auto_admin_app/data/models/task_instance.dart';
+import 'package:auto_admin_app/features/tasks/data/models/sub_task.dart';
+import 'package:auto_admin_app/features/tasks/data/models/task_instance.dart';
 import 'package:auto_admin_app/data/models/task_template.dart';
 
 abstract class TaskRepository {
