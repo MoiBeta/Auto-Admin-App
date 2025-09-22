@@ -1,5 +1,5 @@
 import 'package:auto_admin_app/data/enums/task_frequency.dart';
-import 'package:auto_admin_app/features/tasks/data/models/sub_task.dart';
+import 'package:auto_admin_app/features/tasks/data/models/sub_task_model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class TaskTemplate {
@@ -9,7 +9,7 @@ class TaskTemplate {
   DateTime startDate;
   TaskFrequency frequency;
   List<DateTime>? reminders;
-  List<Subtask>? subtasks;
+  List<SubTaskModel>? subtasks;
   int? customRepeatDays;
   int priority;
 

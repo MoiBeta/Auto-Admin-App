@@ -1,5 +1,4 @@
 class Subtask {
-
   String id;
   String title;
   bool completed;
@@ -9,5 +8,4 @@ class Subtask {
     required this.title,
     required this.completed,
   });
-
 }

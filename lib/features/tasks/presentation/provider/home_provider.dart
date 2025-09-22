@@ -1,243 +1,133 @@
-import 'dart:async';
-
 import 'package:auto_admin_app/data/enums/task_frequency.dart';
-import 'package:auto_admin_app/features/tasks/data/models/sub_task.dart';
-import 'package:auto_admin_app/features/tasks/data/models/task_instance.dart';
-import 'package:auto_admin_app/data/models/task_template.dart';
-import 'package:auto_admin_app/data/repositories/task_repository.dart';
-import 'package:auto_admin_app/features/auth/presentation/providers/auth_provider.dart';
-import 'package:auto_admin_app/state/repository_provider.dart';
+import 'package:auto_admin_app/features/tasks/domain/entities/task.dart';
+import 'package:auto_admin_app/features/tasks/domain/enums/delete_scope.dart';
+import 'package:auto_admin_app/features/tasks/domain/use_cases/create_new_task.dart';
+import 'package:auto_admin_app/features/tasks/domain/use_cases/delete_task.dart';
+import 'package:auto_admin_app/features/tasks/domain/use_cases/get_all_tasks.dart';
+import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/delete_task_data.dart';
+import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/new_task_data.dart';
+import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/update_task_data.dart';
+import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/update_task_instance_data.dart';
+import 'package:auto_admin_app/features/tasks/domain/use_cases/update_task_instance.dart';
+import 'package:auto_admin_app/features/tasks/domain/use_cases/update_task_template.dart';
+import 'package:auto_admin_app/features/tasks/injection/home_injection.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
+part 'home_provider.g.dart';
 
 @Riverpod(keepAlive: true)
 class HomeNotifier extends _$HomeNotifier {
-  late TaskRepository taskRepository;
-  List<TaskTemplate> taskTemplates = [];
-  String? userId;
+  late final CreateNewTask _createNewTask = ref.read(createNewTaskProvider);
+  late final DeleteTask _deleteTask = ref.read(deleteTaskProvider);
+  late final GetAllTasks _getAllTasks = ref.read(getAllTasksProvider);
+  late final UpdateTaskTemplate _updateTaskTemplate =
+      ref.read(updateTaskTemplateProvider);
+  late final UpdateTaskInstance _updateTaskInstance =
+      ref.read(updateTaskInstanceProvider);
 
   @override
-  Future<List<TaskInstance>> build() async {
-    taskRepository = ref.read(taskRepositoryProvider);
-    userId = ref.read(authNotifierProvider)!.credentials?.uid;
-    List<TaskInstance> tasks =
-        await getTaskInstances(ref.watch(selectedDateProvider));
-    checkAndGenerateTaskInstances();
-    return tasks;
+  Future<List<Task>> build() async {
+    listenDateChanges();
+    return getTasks(DateTime.now());
   }
 
-  Future<List<TaskInstance>> getTaskInstances(DateTime selectedDate) async {
-    return taskRepository.getTaskInstances(
-      selectedDate: selectedDate,
-      userId: userId ?? '',
-    );
+  Future<List<Task>> getTasks(DateTime date) async {
+    return _getAllTasks.call(date);
   }
 
   Future<void> refreshTasks(DateTime date) async {
     state = const AsyncLoading();
-
     try {
-      final tasks = await getTaskInstances(date);
+      final tasks = await getTasks(date);
       state = AsyncData(tasks);
     } catch (e, st) {
       state = AsyncError(e, st);
     }
   }
 
-  Future<void> createEditRecurringTask({
+  Future<void> createRecurringTask({
     required String title,
-    required TaskFrequency frequency,
     required DateTime startDate,
-    List<DateTime> reminders = const [],
-    List<Subtask> subtasks = const [],
-    int daysAhead = 30,
-    String? taskTemplateId,
-    bool? mustUpdate,
+    required TaskFrequency frequency,
   }) async {
-    ref.read(isLoadingProvider.notifier).setLoading(true);
-    taskTemplates = await fetchTaskTemplates();
-    taskTemplateId ??= await taskRepository.createTaskTemplate(
-      userId: userId!,
-      title: title,
-      frequency: frequency,
-      startDate: startDate,
-      priority: taskTemplates.length + 1,
-    );
-
-    if(mustUpdate ?? false){
-
-      await taskRepository.updateTaskTemplate(
-        taskTemplateId: taskTemplateId,
-        userId: userId!,
+    state = const AsyncLoading();
+    Task newTask = await _createNewTask.call(
+      TaskData(
         title: title,
-        frequency: frequency,
-        startDate: startDate,
-        priority: taskTemplates.length + 1,
-      );
-      await taskRepository.updateRecurringTaskInstances(
-        userId: userId!,
-        taskTemplateId: taskTemplateId,
         startDate: startDate,
         frequency: frequency,
-      );
-    } else {
-
-      await taskRepository.createRecurringTaskInstances(
-        userId: userId!,
-        taskTemplateId: taskTemplateId,
-        startDate: startDate,
-        frequency: frequency,
-      );
-    }
-
-    state = AsyncData(
-      await getTaskInstances(
-        ref.watch(selectedDateProvider),
       ),
     );
-    ref.read(isLoadingProvider.notifier).setLoading(false);
+    List<Task> tasks = List<Task>.from(state.value ?? []);
+    tasks.add(newTask);
+    state = AsyncData(tasks);
   }
 
-  Future<void> completeTask(
-      {required String taskInstanceId, required bool completed}) async {
-    List<TaskInstance> instances = List<TaskInstance>.from(state.value ?? []);
+  Future<void> editRecurringTask({
+    required String templateId,
+    required String instanceId,
+    required String title,
+    required DateTime startDate,
+    required TaskFrequency frequency,
+  }) async {
+    state = const AsyncLoading();
+    Task updatedTask = await _updateTaskTemplate.call(
+      UpdateTaskTemplateData(
+        templateId: templateId,
+        title: title,
+        startDate: startDate,
+        frequency: frequency,
+      ),
+    );
+    List<Task> tasks = List<Task>.from(state.value ?? []);
+    int index = tasks.indexWhere((task) => task.instanceId == instanceId);
+    tasks[index] = updatedTask;
+    state = AsyncData(tasks);
+  }
 
-    int index =
-        instances.indexWhere((instance) => instance.id == taskInstanceId);
-    instances[index].completed = completed;
+  Future<void> deleteRecurringTask({
+    required String templateId,
+    required String instanceId,
+    required DeleteScope scope,
+    DateTime? referenceDate,
+  }) async {
+    await _deleteTask.call(
+      DeleteTaskData(
+        templateId: templateId,
+        instanceId: instanceId,
+        scope: scope,
+        referenceDate: referenceDate,
+      ),
+    );
+    List<Task> tasks = List<Task>.from(state.value ?? []);
+    tasks.removeWhere((task) => task.id == instanceId);
+    state = AsyncData(tasks);
+  }
 
-    state = AsyncValue.data(instances);
-
-    FirebaseFirestore.instance
-        .collection('taskInstances')
-        .doc(taskInstanceId)
-        .update({
-      'completed': completed,
-      'completedAt': Timestamp.fromDate(DateTime.now()),
+  void listenDateChanges() {
+    ref.listen(selectedDateProvider, (previous, next) {
+      refreshTasks(next);
     });
   }
 
-  Future<TaskTemplate?> getTaskTemplateFromId(String taskTemplateId) async {
-    DocumentSnapshot doc = await FirebaseFirestore.instance
-        .collection('taskTemplates')
-        .doc(taskTemplateId)
-        .get();
-
-    if (doc.exists) {
-      return TaskTemplate.fromDoc(doc);
-    }
-    return null;
-  }
-
-  Future<void> deleteRecurringTask(String taskTemplateId) async {
-    taskRepository.deleteRecurringTask(taskTemplateId);
-
-    taskTemplates = taskTemplates
-        .where((template) => template.id != taskTemplateId)
-        .toList();
-
-    state = AsyncValue.data(
-      List.from(
-        (state.value ?? []).where(
-            (taskInstance) => taskInstance.taskTemplateId != taskTemplateId),
+  Future<void> completeTask({
+    required Task task,
+  }) async {
+    List<Task> tasks = List<Task>.from(state.value ?? []);
+    int index = tasks.indexWhere((currentTask) => currentTask.id == task.id);
+    tasks[index] = task.copyWith(completed: !task.completed);
+    state = AsyncData(tasks);
+    Task updatedTask = await _updateTaskInstance.call(
+      UpdateTaskInstanceData(
+        instanceId: task.instanceId,
+        completed: !task.completed,
+        completedAt: task.completed ? null : DateTime.now(),
+        subtaskStates: task.subtasks ?? [],
       ),
     );
-  }
-
-  Future<void> updateTaskPriorities(int oldIndex, int newIndex) async {
-    if (newIndex > oldIndex) {
-      newIndex -= 1;
-    }
-
-    List<TaskInstance> instances = List.from(state.value ?? []);
-
-    final taskItem = instances.removeAt(oldIndex);
-    instances.insert(newIndex, taskItem);
-    state = AsyncValue.data(instances);
-    reorderTaskTemplate(oldIndex, newIndex);
-  }
-
-  Future<void> reorderTaskTemplate(int oldIndex, int newIndex) async {
-    final templateItem = taskTemplates.removeAt(oldIndex);
-    taskTemplates.insert(newIndex, templateItem);
-    await updateTasksInDatabase();
-  }
-
-  Future<void> updateTasksInDatabase() async {
-    final batch = FirebaseFirestore.instance.batch();
-
-    for (int i = 0; i < taskTemplates.length; i++) {
-      final task = taskTemplates[i];
-      final docRef =
-          FirebaseFirestore.instance.collection('taskTemplates').doc(task.id);
-      batch.update(docRef, {'priority': i + 1});
-    }
-
-    await batch.commit();
-  }
-
-  Future<List<TaskTemplate>> fetchTaskTemplates() async {
-    return taskRepository.fetchTaskTemplates(
-      userId: userId!,
-    );
-  }
-
-  Future<void> checkAndGenerateTaskInstances() async {
-    taskTemplates = await fetchTaskTemplates();
-
-    if (taskTemplates.isNotEmpty) {
-      for (TaskTemplate template in taskTemplates) {
-        QuerySnapshot snapshot = await FirebaseFirestore.instance
-            .collection('taskInstances')
-            .where(
-              'taskTemplateId',
-              isEqualTo: template.id,
-            )
-            .where('date', isGreaterThanOrEqualTo: Timestamp.now())
-            .orderBy('date')
-            .get();
-
-        TaskInstance? taskInstance = snapshot.docs.isNotEmpty
-            ? TaskInstance.fromDoc(snapshot.docs.last)
-            : null;
-
-        if (template.frequency == TaskFrequency.daily &&
-            snapshot.docs.length < 20) {
-          await createEditRecurringTask(
-            title: template.title,
-            frequency: template.frequency,
-            startDate: taskInstance != null
-                ? taskInstance.date.add(const Duration(days: 1))
-                : DateTime(DateTime.now().year, DateTime.now().month,
-                    DateTime.now().day),
-            daysAhead: DateTime.now()
-                .add(
-                  const Duration(
-                    days: 30,
-                  ),
-                )
-                .difference(
-                    taskInstance != null ? taskInstance.date : DateTime.now())
-                .inDays,
-            taskTemplateId: template.id,
-          );
-        }
-
-        if (template.frequency == TaskFrequency.weekly &&
-            snapshot.docs.length < 3) {
-          await createEditRecurringTask(
-            title: template.title,
-            frequency: template.frequency,
-            startDate: taskInstance != null
-                ? taskInstance.date.add(const Duration(days: 1))
-                : DateTime(DateTime.now().year, DateTime.now().month,
-                    DateTime.now().day),
-            daysAhead: 4,
-            taskTemplateId: template.id,
-          );
-        }
-      }
+    if (updatedTask.completed != tasks[index].completed) {
+      tasks[index] = task.copyWith(completed: updatedTask.completed);
+      state = AsyncData(tasks);
     }
   }
 }
@@ -255,16 +145,5 @@ class SelectedDate extends _$SelectedDate {
 
   void selectDate(DateTime date) {
     state = date;
-    ref.read(homeNotifierProvider.notifier).refreshTasks(date);
-  }
-}
-
-@riverpod
-class IsLoading extends _$IsLoading {
-  @override
-  bool build() => false;
-
-  void setLoading(bool isLoading) {
-    state = isLoading;
   }
 }

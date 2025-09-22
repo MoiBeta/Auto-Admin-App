@@ -1,8 +1,8 @@
-import 'package:auto_admin_app/features/tasks/data/models/task_instance.dart';
-import 'package:auto_admin_app/presentation/tasks/widgets/task_list_tile.dart';
-import 'package:auto_admin_app/router/routes.dart';
-import 'package:auto_admin_app/features/home/presentation/provider/home_provider.dart';
-import 'package:auto_admin_app/presentation/tasks/widgets/home_drawer.dart';
+import 'package:auto_admin_app/core/constants/routes.dart';
+import 'package:auto_admin_app/features/tasks/domain/entities/task.dart';
+import 'package:auto_admin_app/features/tasks/presentation/provider/home_provider.dart';
+import 'package:auto_admin_app/features/tasks/presentation/widgets/home_drawer.dart';
+import 'package:auto_admin_app/features/tasks/presentation/widgets/task_list_tile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -16,7 +16,7 @@ class HomePage extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
   ) {
-    AsyncValue<List<TaskInstance>> tasksList = ref.watch(homeNotifierProvider);
+    AsyncValue<List<Task>> tasksList = ref.watch(homeNotifierProvider);
     DateTime selectedDate = ref.watch(selectedDateProvider);
     return Scaffold(
       drawer: HomeDrawer(),
@@ -71,17 +71,17 @@ class HomePage extends ConsumerWidget {
                 child: tasksList.when(
                   data: (data) => ReorderableListView(
                     onReorder: (int oldIndex, int newIndex) async {
-                      ref
+                      /* ref
                           .read(homeNotifierProvider.notifier)
-                          .updateTaskPriorities(oldIndex, newIndex);
+                          .updateTaskPriorities(oldIndex, newIndex);*/
                     },
                     children: [
-                      ...data.map(
-                        (TaskInstance task) => TaskListTile(
-                          task: task,
-                          key: ValueKey(task.id),
-                        ),
-                      ),
+                      ...data.asMap().entries.map(
+                            (entry) => TaskListTile(
+                              task: entry.value,
+                              key: ValueKey('${entry.value.id}_${entry.key}'),
+                            ),
+                          ),
                     ],
                   ),
                   error: (error, trace) => Center(

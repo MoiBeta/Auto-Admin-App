@@ -32,7 +32,9 @@ class AuthNotifier extends StateNotifier<LoginState> {
     this._resendConfirmationCode,
     this._authLogout,
     this._changePassword,
-  ) : super(LoginState()) {
+  ) : super(LoginState(
+          isLoading: true,
+        )) {
     _check();
   }
 

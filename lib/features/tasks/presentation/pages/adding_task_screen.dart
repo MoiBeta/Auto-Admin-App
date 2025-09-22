@@ -1,15 +1,15 @@
 import 'package:auto_admin_app/data/enums/task_frequency.dart';
-import 'package:auto_admin_app/features/tasks/data/models/task_template.dart';
-import 'package:auto_admin_app/features/home/presentation/provider/home_provider.dart';
+import 'package:auto_admin_app/features/tasks/domain/entities/task.dart';
+import 'package:auto_admin_app/features/tasks/presentation/provider/home_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 class AddingTaskScreen extends ConsumerStatefulWidget {
-  const AddingTaskScreen({this.taskTemplate, super.key});
+  const AddingTaskScreen({this.task, super.key});
 
-  final TaskTemplate? taskTemplate;
+  final Task? task;
 
   @override
   ConsumerState<AddingTaskScreen> createState() => _AddingTaskScreenState();
@@ -23,13 +23,13 @@ class _AddingTaskScreenState extends ConsumerState<AddingTaskScreen> {
 
   @override
   void initState() {
-    if (widget.taskTemplate != null) {
-      TaskTemplate taskTemplate = widget.taskTemplate!;
-      titleEditingController.text = taskTemplate.title;
-      selectedDate = taskTemplate.startDate;
+    if (widget.task != null) {
+      Task task = widget.task!;
+      titleEditingController.text = task.title;
+      selectedDate = task.startDate;
       dateEditingController.text =
-          DateFormat('MMM dd yyyy').format(taskTemplate.startDate);
-      taskFrequency = taskTemplate.frequency;
+          DateFormat('MMM dd yyyy').format(task.startDate);
+      taskFrequency = task.taskFrequency;
     }
     super.initState();
   }
@@ -41,7 +41,7 @@ class _AddingTaskScreenState extends ConsumerState<AddingTaskScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          widget.taskTemplate == null ? 'Nueva tarea' : 'Editar tarea',
+          widget.task == null ? 'Nueva tarea' : 'Editar tarea',
         ),
       ),
       body: Padding(
@@ -108,24 +108,34 @@ class _AddingTaskScreenState extends ConsumerState<AddingTaskScreen> {
             ElevatedButton(
               onPressed: () async {
                 if (titleEditingController.text.isNotEmpty) {
-                  await ref
-                      .read(homeNotifierProvider.notifier)
-                      .createEditRecurringTask(
-                        taskTemplateId: widget.taskTemplate?.id,
-                        title: titleEditingController.text,
-                        frequency: taskFrequency,
-                        startDate: selectedDate,
-                        mustUpdate: widget.taskTemplate?.id != null,
-                      );
+                  if (widget.task == null) {
+                    await ref
+                        .read(homeNotifierProvider.notifier)
+                        .createRecurringTask(
+                          title: titleEditingController.text,
+                          frequency: taskFrequency,
+                          startDate: selectedDate,
+                        );
+                  } else {
+                    await ref
+                        .read(homeNotifierProvider.notifier)
+                        .editRecurringTask(
+                          title: titleEditingController.text,
+                          frequency: taskFrequency,
+                          startDate: selectedDate,
+                          templateId: widget.task!.templateId,
+                          instanceId: widget.task!.instanceId,
+                        );
+                  }
                 }
                 if (context.mounted) {
                   context.pop();
                 }
               },
-              child: ref.watch(isLoadingProvider)
+              child: ref.watch(homeNotifierProvider).isLoading
                   ? CircularProgressIndicator()
                   : Text(
-                      widget.taskTemplate == null ? 'Agregar' : 'Editar',
+                      widget.task == null ? 'Agregar' : 'Editar',
                     ),
             ),
           ],
