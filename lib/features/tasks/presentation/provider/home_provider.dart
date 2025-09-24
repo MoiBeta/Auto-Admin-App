@@ -28,7 +28,7 @@ class HomeNotifier extends _$HomeNotifier {
   @override
   Future<List<Task>> build() async {
     listenDateChanges();
-    return getTasks(DateTime.now());
+    return getTasks(ref.read(selectedDateProvider));
   }
 
   Future<List<Task>> getTasks(DateTime date) async {
@@ -56,6 +56,7 @@ class HomeNotifier extends _$HomeNotifier {
         title: title,
         startDate: startDate,
         frequency: frequency,
+        priority: state.value == null ? 0 : state.value!.length,
       ),
     );
     List<Task> tasks = List<Task>.from(state.value ?? []);

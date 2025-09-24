@@ -45,7 +45,7 @@ class FirestoreDataSource extends TasksDataSource {
               )
               .toList()
           : [],
-      priority: 0,
+      priority: newTaskData.priority,
       reminders: [],
     );
     List<TaskInstance> taskInstances = await createRecurringTaskInstances(
@@ -126,6 +126,7 @@ class FirestoreDataSource extends TasksDataSource {
             ),
           )
           .toList(),
+      priority: updateTaskData.priority,
     );
 
     List<TaskInstance> taskInstances = await updateRecurringTaskInstances(
@@ -282,9 +283,9 @@ class FirestoreDataSource extends TasksDataSource {
     required String title,
     required TaskFrequency frequency,
     required DateTime startDate,
+    required int priority,
     List<DateTime> reminders = const [],
     List<SubTaskTemplate> subtasks = const [],
-    int priority = 0,
     String? description,
   }) async {
     final taskTemplateRef = firestore.collection('taskTemplates').doc();
@@ -392,7 +393,7 @@ class FirestoreDataSource extends TasksDataSource {
     required DateTime startDate,
     List<DateTime> reminders = const [],
     List<SubTaskTemplate> subtasks = const [],
-    int priority = 0,
+    int? priority,
   }) async {
     final taskTemplateRef =
         firestore.collection('taskTemplates').doc(taskTemplateId);
@@ -405,7 +406,7 @@ class FirestoreDataSource extends TasksDataSource {
       'subtasks': subtasks
           .map((s) => {'id': s.id, 'title': s.title, 'completed': false})
           .toList(),
-      'priority': priority,
+      if (priority != null) 'priority': priority,
     });
 
     final doc = await taskTemplateRef.get();
