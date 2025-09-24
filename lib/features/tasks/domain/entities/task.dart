@@ -1,4 +1,4 @@
-import 'package:auto_admin_app/data/enums/task_frequency.dart';
+import 'package:auto_admin_app/features/tasks/data/enums/task_frequency.dart';
 import 'package:auto_admin_app/features/tasks/domain/entities/sub_task.dart';
 
 class Task {

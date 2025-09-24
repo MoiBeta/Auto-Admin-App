@@ -1,4 +1,4 @@
-import 'package:auto_admin_app/data/enums/task_frequency.dart';
+import 'package:auto_admin_app/features/tasks/data/enums/task_frequency.dart';
 import 'package:auto_admin_app/features/tasks/data/models/sub_task_model.dart';
 import 'package:auto_admin_app/features/tasks/data/models/task_instance.dart';
 import 'package:auto_admin_app/features/tasks/data/models/task_template.dart';

@@ -1,4 +1,4 @@
-import 'package:auto_admin_app/data/enums/task_frequency.dart';
+import 'package:auto_admin_app/features/tasks/data/enums/task_frequency.dart';
 import 'package:auto_admin_app/features/tasks/domain/entities/task.dart';
 import 'package:auto_admin_app/features/tasks/presentation/provider/home_provider.dart';
 import 'package:flutter/material.dart';
