@@ -12,36 +12,36 @@ class SplashScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final LoginState authState = ref.watch(authNotifierProvider);
+
     if (authState.isLoading) {
       return Scaffold(
         body: Center(
-          child: Lottie.asset(
-            'assets/animations/task-login.json',
-          ),
+          child: Lottie.asset('assets/animations/task-login.json'),
         ),
       );
     }
 
     if (authState.hasError) {
       return Scaffold(
-          body: Center(child: Text('Error: ${authState.errorMessage}')));
+        body: Center(child: Text('Error: ${authState.errorMessage}')),
+      );
     }
 
     if (authState.credentials != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!context.mounted) return;
-        if (authState.credentials == null) {
-          context.go(Routes.auth);
-        } else {
-          context.go(Routes.home);
-        }
+        context.go(Routes.home);
+      });
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted) return;
+        context.go(Routes.auth);
       });
     }
+
     return Scaffold(
       body: Center(
-        child: Lottie.asset(
-          'assets/animations/task-login.json',
-        ),
+        child: Lottie.asset('assets/animations/task-login.json'),
       ),
     );
   }

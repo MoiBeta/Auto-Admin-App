@@ -8,7 +8,7 @@ class TaskTemplate {
   String? description;
   DateTime startDate;
   TaskFrequency frequency;
-  List<DateTime>? reminders;
+  DateTime? reminderDate;
   List<SubTaskModel>? subtasks;
   int? customRepeatDays;
   int priority;
@@ -20,7 +20,7 @@ class TaskTemplate {
     required this.frequency,
     required this.priority,
     this.description,
-    this.reminders,
+    this.reminderDate,
     this.subtasks,
     this.customRepeatDays,
   });

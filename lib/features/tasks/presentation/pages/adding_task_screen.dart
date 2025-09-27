@@ -18,8 +18,11 @@ class AddingTaskScreen extends ConsumerStatefulWidget {
 class _AddingTaskScreenState extends ConsumerState<AddingTaskScreen> {
   TextEditingController titleEditingController = TextEditingController();
   TextEditingController dateEditingController = TextEditingController();
+  TextEditingController reminderEditingController = TextEditingController();
+
   TaskFrequency taskFrequency = TaskFrequency.daily;
   DateTime selectedDate = DateTime.now();
+  TimeOfDay? selectedTime;
 
   @override
   void initState() {
@@ -30,14 +33,14 @@ class _AddingTaskScreenState extends ConsumerState<AddingTaskScreen> {
       dateEditingController.text =
           DateFormat('MMM dd yyyy').format(task.startDate);
       taskFrequency = task.taskFrequency;
+
+      // si tu entidad Task soporta hora de recordatorio, puedes precargarla aquí
     }
     super.initState();
   }
 
   @override
-  Widget build(
-    BuildContext context,
-  ) {
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -49,16 +52,14 @@ class _AddingTaskScreenState extends ConsumerState<AddingTaskScreen> {
         child: Column(
           children: [
             TextFormField(
-              decoration: InputDecoration(hintText: 'Titulo'),
+              decoration: const InputDecoration(hintText: 'Título'),
               controller: titleEditingController,
             ),
-            const SizedBox(
-              height: 10,
-            ),
+            const SizedBox(height: 10),
             GestureDetector(
               child: TextFormField(
                 controller: dateEditingController,
-                decoration: InputDecoration(hintText: 'Fecha'),
+                decoration: const InputDecoration(hintText: 'Fecha'),
                 enabled: false,
               ),
               onTap: () {
@@ -69,34 +70,50 @@ class _AddingTaskScreenState extends ConsumerState<AddingTaskScreen> {
                 ).then(
                   (date) {
                     if (date != null) {
-                      setState(
-                        () {
-                          selectedDate = date;
-                          dateEditingController.text =
-                              DateFormat('MMM dd yyyy').format(date);
-                        },
-                      );
+                      setState(() {
+                        selectedDate = date;
+                        dateEditingController.text =
+                            DateFormat('MMM dd yyyy').format(date);
+                      });
                     }
                   },
                 );
               },
             ),
+            const SizedBox(height: 10),
+            GestureDetector(
+              child: TextFormField(
+                controller: reminderEditingController,
+                decoration:
+                    const InputDecoration(hintText: 'Hora de recordatorio'),
+                enabled: false,
+              ),
+              onTap: () async {
+                final time = await showTimePicker(
+                  context: context,
+                  initialTime: TimeOfDay.now(),
+                );
+                if (time != null) {
+                  setState(() {
+                    selectedTime = time;
+                    reminderEditingController.text = time.format(context);
+                  });
+                }
+              },
+            ),
+            const SizedBox(height: 10),
             DropdownButton(
               items: TaskFrequency.values.map((TaskFrequency taskFrequency) {
                 return DropdownMenuItem(
                   value: taskFrequency,
                   child: Text(
                     getNameFromTaskFrequency(taskFrequency),
-                    style: TextStyle(
-                      color: Colors.black,
-                    ),
+                    style: const TextStyle(color: Colors.black),
                   ),
                 );
               }).toList(),
               value: taskFrequency,
-              style: TextStyle(
-                color: Colors.black,
-              ),
+              style: const TextStyle(color: Colors.black),
               onChanged: (TaskFrequency? value) {
                 if (value != null) {
                   setState(() {
@@ -105,9 +122,13 @@ class _AddingTaskScreenState extends ConsumerState<AddingTaskScreen> {
                 }
               },
             ),
+            const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () async {
                 if (titleEditingController.text.isNotEmpty) {
+                  final DateTime? reminderDateTime =
+                      selectedTime != null ? _combineDateAndTime() : null;
+
                   if (widget.task == null) {
                     await ref
                         .read(homeNotifierProvider.notifier)
@@ -115,6 +136,7 @@ class _AddingTaskScreenState extends ConsumerState<AddingTaskScreen> {
                           title: titleEditingController.text,
                           frequency: taskFrequency,
                           startDate: selectedDate,
+                          reminderDate: reminderDateTime,
                         );
                   } else {
                     await ref
@@ -123,6 +145,7 @@ class _AddingTaskScreenState extends ConsumerState<AddingTaskScreen> {
                           title: titleEditingController.text,
                           frequency: taskFrequency,
                           startDate: selectedDate,
+                          reminderDate: reminderDateTime,
                           templateId: widget.task!.templateId,
                           instanceId: widget.task!.instanceId,
                         );
@@ -133,7 +156,7 @@ class _AddingTaskScreenState extends ConsumerState<AddingTaskScreen> {
                 }
               },
               child: ref.watch(homeNotifierProvider).isLoading
-                  ? CircularProgressIndicator()
+                  ? const CircularProgressIndicator()
                   : Text(
                       widget.task == null ? 'Agregar' : 'Editar',
                     ),
@@ -159,5 +182,15 @@ class _AddingTaskScreenState extends ConsumerState<AddingTaskScreen> {
       case TaskFrequency.custom:
         return 'Personalizado';
     }
+  }
+
+  DateTime _combineDateAndTime() {
+    return DateTime(
+      selectedDate.year,
+      selectedDate.month,
+      selectedDate.day,
+      selectedTime!.hour,
+      selectedTime!.minute,
+    );
   }
 }

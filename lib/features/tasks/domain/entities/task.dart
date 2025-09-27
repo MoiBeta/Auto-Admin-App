@@ -13,6 +13,7 @@ class Task {
   final String templateId;
   final String instanceId;
   TaskFrequency taskFrequency;
+  DateTime? reminderDate;
 
   Task({
     required this.id,
@@ -26,6 +27,7 @@ class Task {
     this.completedAt,
     this.description,
     this.subtasks = const [],
+    this.reminderDate,
   });
 
   Task copyWith({
@@ -40,6 +42,7 @@ class Task {
     String? templateId,
     String? instanceId,
     TaskFrequency? taskFrequency,
+    DateTime? reminderDate,
   }) {
     return Task(
       id: id ?? this.id,
@@ -53,6 +56,7 @@ class Task {
       templateId: templateId ?? this.templateId,
       instanceId: instanceId ?? this.instanceId,
       taskFrequency: taskFrequency ?? this.taskFrequency,
+      reminderDate: reminderDate ?? this.reminderDate,
     );
   }
 }

@@ -55,6 +55,7 @@ class HomeNotifier extends _$HomeNotifier {
     required String title,
     required DateTime startDate,
     required TaskFrequency frequency,
+    DateTime? reminderDate,
   }) async {
     state = const AsyncLoading();
     Task newTask = await _createNewTask.call(
@@ -68,6 +69,10 @@ class HomeNotifier extends _$HomeNotifier {
     List<Task> tasks = List<Task>.from(state.value ?? []);
     tasks.add(newTask);
     state = AsyncData(tasks);
+    if (reminderDate != null) {
+      newTask.reminderDate = reminderDate;
+      await scheduleTaskNotification.call(newTask);
+    }
   }
 
   Future<void> editRecurringTask({
@@ -76,6 +81,7 @@ class HomeNotifier extends _$HomeNotifier {
     required String title,
     required DateTime startDate,
     required TaskFrequency frequency,
+    DateTime? reminderDate,
   }) async {
     state = const AsyncLoading();
     Task updatedTask = await _updateTaskTemplate.call(
@@ -90,6 +96,12 @@ class HomeNotifier extends _$HomeNotifier {
     int index = tasks.indexWhere((task) => task.instanceId == instanceId);
     tasks[index] = updatedTask;
     state = AsyncData(tasks);
+    if (reminderDate != null) {
+      updatedTask.copyWith(
+        reminderDate: reminderDate,
+      );
+      await scheduleTaskNotification.call(updatedTask);
+    }
   }
 
   Future<void> deleteRecurringTask({
@@ -109,6 +121,7 @@ class HomeNotifier extends _$HomeNotifier {
     List<Task> tasks = List<Task>.from(state.value ?? []);
     tasks.removeWhere((task) => task.id == instanceId);
     state = AsyncData(tasks);
+    await cancelTaskNotification(instanceId);
   }
 
   void listenDateChanges() {
@@ -139,12 +152,8 @@ class HomeNotifier extends _$HomeNotifier {
     if (updatedTask.completed) {
       await cancelTaskNotification(task.id);
     } else {
-      await scheduleTaskNotification(task);
+      await scheduleTaskNotification.call(task);
     }
-  }
-
-  Future<void> addTask(Task task) async {
-    await scheduleTaskNotification(task);
   }
 }
 

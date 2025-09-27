@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:auto_admin_app/firebase_options.dart';
 import 'package:auto_admin_app/global/router/router.dart';
 import 'package:auto_admin_app/global/theme/app_theme.dart';
@@ -5,6 +7,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:timezone/data/latest_all.dart' as tz;
 
 import 'features/tasks/injection/home_injection.dart';
 
@@ -13,6 +16,7 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  tz.initializeTimeZones();
 
   final notifications = FlutterLocalNotificationsPlugin();
   await notifications.initialize(
@@ -21,6 +25,11 @@ void main() async {
       iOS: DarwinInitializationSettings(),
     ),
   );
+  final androidPlugin = notifications.resolvePlatformSpecificImplementation<
+      AndroidFlutterLocalNotificationsPlugin>();
+
+  final granted = await androidPlugin?.requestNotificationsPermission();
+  log("Notification permission granted: $granted");
   runApp(
     ProviderScope(
       overrides: [
