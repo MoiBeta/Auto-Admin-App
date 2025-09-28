@@ -1,5 +1,3 @@
-import 'dart:developer';
-
 import 'package:auto_admin_app/firebase_options.dart';
 import 'package:auto_admin_app/global/router/router.dart';
 import 'package:auto_admin_app/global/theme/app_theme.dart';
@@ -25,11 +23,6 @@ void main() async {
       iOS: DarwinInitializationSettings(),
     ),
   );
-  final androidPlugin = notifications.resolvePlatformSpecificImplementation<
-      AndroidFlutterLocalNotificationsPlugin>();
-
-  final granted = await androidPlugin?.requestNotificationsPermission();
-  log("Notification permission granted: $granted");
   runApp(
     ProviderScope(
       overrides: [

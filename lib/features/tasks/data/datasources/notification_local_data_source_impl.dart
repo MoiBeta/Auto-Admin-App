@@ -1,6 +1,7 @@
 import 'dart:developer';
 
 import 'package:auto_admin_app/features/tasks/data/datasources/notification_local_data_source.dart';
+import 'package:auto_admin_app/features/tasks/data/enums/task_frequency.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 
@@ -15,6 +16,7 @@ class NotificationLocalDataSourceImpl implements NotificationLocalDataSource {
     required String title,
     required String body,
     required DateTime scheduledDate,
+    required TaskFrequency taskFrequency,
     String? payload,
   }) async {
     final details = NotificationDetails(
@@ -37,6 +39,13 @@ class NotificationLocalDataSourceImpl implements NotificationLocalDataSource {
         details,
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
         payload: payload,
+        matchDateTimeComponents: taskFrequency == TaskFrequency.daily
+            ? DateTimeComponents.time
+            : taskFrequency == TaskFrequency.weekly
+                ? DateTimeComponents.dayOfWeekAndTime
+                : taskFrequency == TaskFrequency.weekly
+                    ? DateTimeComponents.dateAndTime
+                    : null,
       );
     } catch (e) {
       log('Exception scheduling reminder: $e');

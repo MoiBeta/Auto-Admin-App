@@ -89,15 +89,46 @@ class _AddingTaskScreenState extends ConsumerState<AddingTaskScreen> {
                 enabled: false,
               ),
               onTap: () async {
-                final time = await showTimePicker(
-                  context: context,
-                  initialTime: TimeOfDay.now(),
-                );
-                if (time != null) {
-                  setState(() {
-                    selectedTime = time;
-                    reminderEditingController.text = time.format(context);
-                  });
+                bool granted = await ref
+                    .read(homeNotifierProvider.notifier)
+                    .checkNotificationPermission();
+                if (context.mounted) {
+                  if (granted) {
+                    final time = await showTimePicker(
+                      context: context,
+                      initialTime: TimeOfDay.now(),
+                    );
+                    if (time != null) {
+                      setState(() {
+                        selectedTime = time;
+                        reminderEditingController.text = time.format(context);
+                      });
+                    }
+                  } else {
+                    showDialog(
+                      context: context,
+                      builder: (cxt) => AlertDialog(
+                        title: Icon(
+                          Icons.warning,
+                          size: 200,
+                        ),
+                        content: Text(
+                          'Necesitamos tu permiso para mostrar notificaciones de recordatorios',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () {
+                              context.pop();
+                            },
+                            child: Text('Ok'),
+                          ),
+                        ],
+                      ),
+                    );
+                    setState(() {
+                      reminderEditingController.clear();
+                    });
+                  }
                 }
               },
             ),

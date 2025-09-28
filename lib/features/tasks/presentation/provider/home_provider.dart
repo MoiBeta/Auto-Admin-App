@@ -13,6 +13,7 @@ import 'package:auto_admin_app/features/tasks/domain/use_cases/schedule_task_not
 import 'package:auto_admin_app/features/tasks/domain/use_cases/update_task_instance.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/update_task_template.dart';
 import 'package:auto_admin_app/features/tasks/injection/home_injection.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'home_provider.g.dart';
@@ -154,6 +155,16 @@ class HomeNotifier extends _$HomeNotifier {
     } else {
       await scheduleTaskNotification.call(task);
     }
+  }
+
+  Future<bool> checkNotificationPermission() async {
+    final androidPlugin = ref
+        .read(flutterLocalNotificationsProvider)
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+
+    final granted = await androidPlugin?.requestNotificationsPermission();
+    return granted ?? false;
   }
 }
 

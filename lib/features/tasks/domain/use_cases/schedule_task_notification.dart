@@ -13,6 +13,7 @@ class ScheduleTaskNotification {
         title: "Tarea pendiente",
         body: task.title,
         scheduledDate: task.reminderDate!,
+        taskFrequency: task.taskFrequency,
       );
     }
   }

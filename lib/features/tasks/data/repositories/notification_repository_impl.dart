@@ -1,4 +1,5 @@
 import 'package:auto_admin_app/features/tasks/data/datasources/notification_local_data_source.dart';
+import 'package:auto_admin_app/features/tasks/data/enums/task_frequency.dart';
 import 'package:auto_admin_app/features/tasks/domain/repository/notification_repository.dart';
 
 class NotificationRepositoryImpl implements NotificationRepository {
@@ -12,15 +13,16 @@ class NotificationRepositoryImpl implements NotificationRepository {
     required String title,
     required String body,
     required DateTime scheduledDate,
+    required TaskFrequency taskFrequency,
     String? payload,
   }) async {
     await localDataSource.scheduleNotification(
-      id: id.hashCode,
-      title: title,
-      body: body,
-      scheduledDate: scheduledDate,
-      payload: payload,
-    );
+        id: id.hashCode,
+        title: title,
+        body: body,
+        scheduledDate: scheduledDate,
+        payload: payload,
+        taskFrequency: taskFrequency);
   }
 
   @override
