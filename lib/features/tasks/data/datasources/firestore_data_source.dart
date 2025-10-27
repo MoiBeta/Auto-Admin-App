@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:developer';
+
 import 'package:auto_admin_app/features/tasks/data/datasources/data_source.dart';
 import 'package:auto_admin_app/features/tasks/data/enums/task_frequency.dart';
 import 'package:auto_admin_app/features/tasks/data/models/sub_task_model.dart';
@@ -173,7 +176,7 @@ class FirestoreDataSource extends TasksDataSource {
 
   @override
   Future<List<TaskModel>> getAllTasks(DateTime date) async {
-    final templates = await fetchTaskTemplates(
+    final List<TaskTemplate> templates = await fetchTaskTemplates(
       userId: userId,
     );
 
@@ -187,10 +190,102 @@ class FirestoreDataSource extends TasksDataSource {
       allInstances.addAll(instances);
     }
 
+    unawaited(_checkAndCreateUpcomingInstances(templates: templates));
+
     return allInstances.map((i) {
       final template = templates.firstWhere((t) => t.id == i.taskTemplateId);
       return TaskModel.fromTemplateAndInstance(template, i);
     }).toList();
+  }
+
+  Future<void> _checkAndCreateUpcomingInstances({
+    required List<TaskTemplate> templates,
+  }) async {
+    try {
+      for (final template in templates) {
+        await ensureUpcomingTaskInstancesUpToDate(
+          taskTemplateId: template.id,
+          startDate: template.startDate,
+          frequency: template.frequency,
+        );
+      }
+    } catch (e) {
+      // Puedes ignorar o loguear el error
+      log('Error creating missing instances: $e');
+    }
+  }
+
+  Future<void> ensureUpcomingTaskInstancesUpToDate({
+    required String taskTemplateId,
+    required DateTime startDate,
+    required TaskFrequency frequency,
+  }) async {
+    final collection = firestore.collection('taskInstances');
+    final today = DateTime.now();
+
+    final existingDocs = await collection
+        .where('taskTemplateId', isEqualTo: taskTemplateId)
+        .where('date', isGreaterThanOrEqualTo: today)
+        .orderBy('date')
+        .get();
+
+    final existingDates = existingDocs.docs
+        .map((doc) => (doc['date'] as Timestamp).toDate())
+        .toList();
+
+    DateTime nextDate =
+        existingDates.isNotEmpty ? existingDates.last : startDate;
+
+    final DateTime limitDate = today.add(const Duration(days: 30));
+    final List<TaskInstance> newInstances = [];
+
+    while (nextDate.isBefore(limitDate)) {
+      final exists = existingDates.any((d) =>
+          d.year == nextDate.year &&
+          d.month == nextDate.month &&
+          d.day == nextDate.day);
+
+      if (!exists) {
+        newInstances.add(TaskInstance(
+          id: '${taskTemplateId}_${nextDate.toIso8601String()}',
+          userId: userId,
+          taskTemplateId: taskTemplateId,
+          date: nextDate,
+          completed: false,
+          completedAt: null,
+        ));
+      }
+
+      nextDate = _getNextDate(nextDate, frequency);
+    }
+
+    // 🔹 Crear solo las que faltan
+    if (newInstances.isNotEmpty) {
+      final batch = firestore.batch();
+      for (final task in newInstances) {
+        final docRef = collection.doc(task.id);
+        batch.set(docRef, task.toJson());
+      }
+      await batch.commit();
+    }
+  }
+
+  /// Auxiliar para avanzar a la siguiente fecha según frecuencia
+  DateTime _getNextDate(DateTime current, TaskFrequency frequency) {
+    switch (frequency) {
+      case TaskFrequency.daily:
+        return current.add(const Duration(days: 1));
+      case TaskFrequency.weekly:
+        return current.add(const Duration(days: 7));
+      case TaskFrequency.monthly:
+        return DateTime(current.year, current.month + 1, current.day);
+      case TaskFrequency.yearly:
+        return DateTime(current.year + 1, current.month, current.day);
+      case TaskFrequency.none:
+        return current;
+      case TaskFrequency.custom:
+        throw UnimplementedError('Custom frequency not implemented');
+    }
   }
 
   Future<List<TaskInstance>> createRecurringTaskInstances({

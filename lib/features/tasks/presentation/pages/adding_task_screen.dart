@@ -33,8 +33,6 @@ class _AddingTaskScreenState extends ConsumerState<AddingTaskScreen> {
       dateEditingController.text =
           DateFormat('MMM dd yyyy').format(task.startDate);
       taskFrequency = task.taskFrequency;
-
-      // si tu entidad Task soporta hora de recordatorio, puedes precargarla aquí
     }
     super.initState();
   }
