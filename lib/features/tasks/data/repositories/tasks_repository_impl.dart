@@ -32,6 +32,7 @@ class TaskRepositoryImpl extends TasksRepository {
 
   @override
   Future<List<Task>> getAllTasks(DateTime date) {
+    tasksDataSource.checkAndCreateUpcomingInstances();
     return tasksDataSource.getAllTasks(date).then((tasks) {
       return tasks.map((task) => task.toEntity()).toList();
     });

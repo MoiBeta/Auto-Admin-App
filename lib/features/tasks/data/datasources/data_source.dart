@@ -14,4 +14,6 @@ abstract class TasksDataSource {
   Future<TaskModel> editTaskInstance(UpdateTaskInstanceData newTaskData);
 
   Future<void> deleteTask(DeleteTaskData deleteTaskData);
+
+  Future<void> checkAndCreateUpcomingInstances();
 }

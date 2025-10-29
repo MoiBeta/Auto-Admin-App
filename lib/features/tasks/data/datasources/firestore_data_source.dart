@@ -190,17 +190,17 @@ class FirestoreDataSource extends TasksDataSource {
       allInstances.addAll(instances);
     }
 
-    unawaited(_checkAndCreateUpcomingInstances(templates: templates));
-
     return allInstances.map((i) {
       final template = templates.firstWhere((t) => t.id == i.taskTemplateId);
       return TaskModel.fromTemplateAndInstance(template, i);
     }).toList();
   }
 
-  Future<void> _checkAndCreateUpcomingInstances({
-    required List<TaskTemplate> templates,
-  }) async {
+  @override
+  Future<void> checkAndCreateUpcomingInstances() async {
+    final List<TaskTemplate> templates = await fetchTaskTemplates(
+      userId: userId,
+    );
     try {
       for (final template in templates) {
         await ensureUpcomingTaskInstancesUpToDate(
