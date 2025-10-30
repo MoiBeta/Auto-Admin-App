@@ -52,7 +52,7 @@ class TaskModel {
       userId: instance.userId,
       title: template.title,
       description: template.description,
-      subtasks: template.subtasks,
+      subtasks: instance.subtasks,
       startDate: instance.date,
       completed: instance.completed,
       completedAt: instance.completedAt,

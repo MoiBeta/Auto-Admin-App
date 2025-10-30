@@ -8,6 +8,7 @@ import 'package:auto_admin_app/features/tasks/data/models/sub_task_template.dart
 import 'package:auto_admin_app/features/tasks/data/models/task_instance.dart';
 import 'package:auto_admin_app/features/tasks/data/models/task_model.dart';
 import 'package:auto_admin_app/features/tasks/data/models/task_template.dart';
+import 'package:auto_admin_app/features/tasks/domain/entities/sub_task.dart';
 import 'package:auto_admin_app/features/tasks/domain/enums/delete_scope.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/delete_task_data.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/new_task_data.dart';
@@ -56,6 +57,18 @@ class FirestoreDataSource extends TasksDataSource {
       taskTemplateId: taskTemplate.id,
       startDate: newTaskData.startDate,
       frequency: newTaskData.frequency,
+      subTasksTemplates: newTaskData.subTasks != null
+          ? newTaskData.subTasks!
+              .asMap()
+              .entries
+              .map(
+                (entry) => SubTaskTemplate(
+                  id: entry.key.toString(),
+                  title: entry.value,
+                ),
+              )
+              .toList()
+          : [],
     );
 
     return TaskModel.fromTemplateAndInstance(
@@ -156,6 +169,12 @@ class FirestoreDataSource extends TasksDataSource {
       'completed': newTaskData.completed,
       'completedAt': newTaskData.completedAt,
       'subtasks': newTaskData.subtaskStates
+          .map((Subtask subTask) => {
+                'completed': subTask.completed,
+                'id': subTask.id,
+                'title': subTask.title,
+              })
+          .toList(),
     });
     DocumentSnapshot doc = await firestore
         .collection("taskInstances")

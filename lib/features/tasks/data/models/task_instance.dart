@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:auto_admin_app/features/tasks/data/models/sub_task_model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -20,13 +22,24 @@ class TaskInstance {
     this.completedAt,
   });
 
-  factory TaskInstance.fromDoc(DocumentSnapshot doc) => TaskInstance(
-        id: doc.id,
-        userId: doc['userId'],
-        taskTemplateId: doc['taskTemplateId'],
-        date: (doc['date'] as Timestamp).toDate(),
-        completed: doc['completed'],
-      );
+  factory TaskInstance.fromDoc(DocumentSnapshot doc) {
+    List<SubTaskModel> subTasks = [];
+    try {
+      log('Subtasks: ${doc['subtasks'].toString()}');
+      subTasks = (doc['subtasks'] as List<dynamic>)
+          .map((json) => SubTaskModel.fromJson(json))
+          .toList();
+    } catch (_) {}
+
+    return TaskInstance(
+      id: doc.id,
+      userId: doc['userId'],
+      taskTemplateId: doc['taskTemplateId'],
+      date: (doc['date'] as Timestamp).toDate(),
+      completed: doc['completed'],
+      subtasks: subTasks,
+    );
+  }
 
   Map<String, dynamic> toJson() {
     return {
@@ -34,7 +47,7 @@ class TaskInstance {
       'userId': userId,
       'taskTemplateId': taskTemplateId,
       'date': date,
-      'subtasks': subtasks,
+      'subtasks': subtasks?.map((subTask) => subTask.toJson()).toList(),
       'completed': completed,
     };
   }

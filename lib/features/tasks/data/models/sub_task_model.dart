@@ -1,3 +1,5 @@
+import 'package:auto_admin_app/features/tasks/data/models/sub_task_instance.dart';
+import 'package:auto_admin_app/features/tasks/data/models/sub_task_template.dart';
 import 'package:auto_admin_app/features/tasks/domain/entities/sub_task.dart';
 
 class SubTaskModel {
@@ -11,7 +13,7 @@ class SubTaskModel {
     required this.completed,
   });
 
-  factory SubTaskModel.fromJson(Map<String, dynamic> json) {
+  factory SubTaskModel.fromJson(dynamic json) {
     return SubTaskModel(
       id: json['id'] as String,
       title: json['title'] as String,
@@ -35,11 +37,12 @@ class SubTaskModel {
     );
   }
 
-  factory SubTaskModel.fromEntity(Subtask entity) {
+  factory SubTaskModel.fromTemplateAndInstance(
+      SubTaskTemplate template, SubTaskInstance instance) {
     return SubTaskModel(
-      id: entity.id,
-      title: entity.title,
-      completed: entity.completed,
+      id: instance.id,
+      title: template.title,
+      completed: instance.completed,
     );
   }
 }

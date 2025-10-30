@@ -1,4 +1,5 @@
 import 'package:auto_admin_app/features/tasks/data/enums/task_frequency.dart';
+import 'package:auto_admin_app/features/tasks/domain/entities/sub_task.dart';
 import 'package:auto_admin_app/features/tasks/domain/entities/task.dart';
 import 'package:auto_admin_app/features/tasks/domain/enums/delete_scope.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/cancel_task_notification.dart';
@@ -57,6 +58,7 @@ class HomeNotifier extends _$HomeNotifier {
     required DateTime startDate,
     required TaskFrequency frequency,
     DateTime? reminderDate,
+    List<String>? subtasks,
   }) async {
     state = const AsyncLoading();
     Task newTask = await _createNewTask.call(
@@ -65,6 +67,7 @@ class HomeNotifier extends _$HomeNotifier {
         startDate: startDate,
         frequency: frequency,
         priority: state.value == null ? 0 : state.value!.length,
+        subTasks: subtasks,
       ),
     );
     List<Task> tasks = List<Task>.from(state.value ?? []);
@@ -83,6 +86,7 @@ class HomeNotifier extends _$HomeNotifier {
     required DateTime startDate,
     required TaskFrequency frequency,
     DateTime? reminderDate,
+    List<String>? subtasks,
   }) async {
     state = const AsyncLoading();
     Task updatedTask = await _updateTaskTemplate.call(
@@ -91,6 +95,7 @@ class HomeNotifier extends _$HomeNotifier {
         title: title,
         startDate: startDate,
         frequency: frequency,
+        subTasks: subtasks,
       ),
     );
     List<Task> tasks = List<Task>.from(state.value ?? []);
@@ -165,6 +170,45 @@ class HomeNotifier extends _$HomeNotifier {
 
     final granted = await androidPlugin?.requestNotificationsPermission();
     return granted ?? false;
+  }
+
+  Future<void> toggleSubtaskCompletion({
+    required Task task,
+    required Subtask subtask,
+  }) async {
+    final updatedSubtasks = task.subtasks!.map((s) {
+      if (s.id == subtask.id) {
+        return s.copyWith(completed: !s.completed);
+      }
+      return s;
+    }).toList();
+
+    final allCompleted = updatedSubtasks.every((s) => s.completed);
+
+    // Actualizar en la capa de datos usando el caso de uso existente
+    final updatedTask = await _updateTaskInstance.call(
+      UpdateTaskInstanceData(
+        instanceId: task.instanceId,
+        completed: allCompleted,
+        subtaskStates: updatedSubtasks,
+        completedAt: allCompleted ? DateTime.now() : null,
+      ),
+    );
+
+    // Reflejar el cambio en el estado local
+    final tasks = List<Task>.from(state.value ?? []);
+    final index = tasks.indexWhere((t) => t.id == task.id);
+    if (index != -1) {
+      tasks[index] = updatedTask;
+      state = AsyncData(tasks);
+    }
+
+    // Manejo de notificaciones
+    if (allCompleted) {
+      await cancelTaskNotification(task.id);
+    } else {
+      await scheduleTaskNotification.call(task);
+    }
   }
 }
 
