@@ -157,6 +157,7 @@ class _TaskListTileState extends ConsumerState<TaskListTile> {
               child: Column(
                 children: task.subtasks!.map((subtask) {
                   return ListTile(
+                    onTap: () => _toggleSubtaskCompletion(subtask),
                     dense: true,
                     contentPadding: EdgeInsets.zero,
                     leading: IconButton(
