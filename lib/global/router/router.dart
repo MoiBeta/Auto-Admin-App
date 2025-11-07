@@ -7,7 +7,6 @@ import 'package:auto_admin_app/features/tasks/domain/entities/task.dart';
 import 'package:auto_admin_app/features/tasks/presentation/pages/adding_task_screen.dart';
 import 'package:auto_admin_app/features/tasks/presentation/pages/home_page.dart';
 import 'package:auto_admin_app/global/pages/splash_screen.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
