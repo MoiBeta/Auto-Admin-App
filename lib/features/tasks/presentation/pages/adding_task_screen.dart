@@ -2,69 +2,107 @@ import 'package:auto_admin_app/features/tasks/data/enums/task_frequency.dart';
 import 'package:auto_admin_app/features/tasks/domain/entities/task.dart';
 import 'package:auto_admin_app/features/tasks/presentation/provider/home_provider.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:intl/intl.dart';
 
-class AddingTaskScreen extends ConsumerStatefulWidget {
+class AddingTaskScreen extends HookConsumerWidget {
   const AddingTaskScreen({this.task, super.key});
 
   final Task? task;
 
   @override
-  ConsumerState<AddingTaskScreen> createState() => _AddingTaskScreenState();
-}
-
-class _AddingTaskScreenState extends ConsumerState<AddingTaskScreen> {
-  final TextEditingController titleEditingController = TextEditingController();
-  final TextEditingController dateEditingController = TextEditingController();
-  final TextEditingController reminderEditingController =
-      TextEditingController();
-  final TextEditingController subtaskController = TextEditingController();
-
-  TaskFrequency taskFrequency = TaskFrequency.daily;
-  DateTime selectedDate = DateTime.now();
-  TimeOfDay? selectedTime;
-
-  final List<String> subtasks = [];
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.task != null) {
-      final Task task = widget.task!;
-      titleEditingController.text = task.title;
-      selectedDate = task.startDate;
-      dateEditingController.text =
-          DateFormat('MMM dd yyyy').format(task.startDate);
-      taskFrequency = task.taskFrequency;
-
-      // Si el task tiene subtasks existentes, los agregamos
-      subtasks.addAll(task.subtasks?.map((s) => s.title) ?? []);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isLoading = ref.watch(homeProvider).isLoading;
+
+    // controllers
+    final titleEditingController = useTextEditingController();
+    final dateEditingController = useTextEditingController();
+    final reminderEditingController = useTextEditingController();
+    final subtaskController = useTextEditingController();
+
+    // states locales
+    final taskFrequency = useState<TaskFrequency>(TaskFrequency.daily);
+    final selectedDate = useState<DateTime>(DateTime.now());
+    final selectedTime = useState<TimeOfDay?>(null);
+    final subtasks = useState<List<String>>([]);
+
+    // init (equivalente a initState)
+    useEffect(() {
+      if (task != null) {
+        final Task t = task!;
+        titleEditingController.text = t.title;
+        selectedDate.value = t.startDate;
+        dateEditingController.text =
+            DateFormat('MMM dd yyyy').format(t.startDate);
+        taskFrequency.value = t.taskFrequency;
+        subtasks.value = [...?t.subtasks?.map((s) => s.title)];
+      }
+      return null;
+    }, const []);
+
+    Future<void> onSave() async {
+      if (titleEditingController.text.isEmpty) return;
+
+      DateTime? reminderDateTime;
+      if (selectedTime.value != null) {
+        reminderDateTime = DateTime(
+          selectedDate.value.year,
+          selectedDate.value.month,
+          selectedDate.value.day,
+          selectedTime.value?.hour ?? 0,
+          selectedTime.value?.minute ?? 0,
+        );
+      }
+
+      if (task == null) {
+        await ref.read(homeProvider.notifier).createRecurringTask(
+              title: titleEditingController.text,
+              frequency: taskFrequency.value,
+              startDate: selectedDate.value,
+              reminderDate: reminderDateTime,
+              subtasks: subtasks.value,
+            );
+      } else {
+        await ref.read(homeProvider.notifier).editRecurringTask(
+              title: titleEditingController.text,
+              frequency: taskFrequency.value,
+              startDate: selectedDate.value,
+              reminderDate: reminderDateTime,
+              templateId: task!.templateId,
+              instanceId: task!.instanceId,
+              subtasks: subtasks.value,
+            );
+      }
+
+      if (context.mounted) context.pop();
+    }
+
+    void addSubTask() {
+      final text = subtaskController.text.trim();
+      if (text.isNotEmpty) {
+        subtasks.value = [...subtasks.value, text];
+        subtaskController.clear();
+      }
+    }
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.task == null ? 'Nueva tarea' : 'Editar tarea'),
+        title: Text(task == null ? 'Nueva tarea' : 'Editar tarea'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(12.0),
         child: SingleChildScrollView(
           child: Column(
             children: [
-              // Campo título
               TextFormField(
                 decoration: const InputDecoration(hintText: 'Título'),
                 controller: titleEditingController,
               ),
               const SizedBox(height: 10),
 
-              // Fecha
+              // fecha
               GestureDetector(
                 onTap: () async {
                   final date = await showDatePicker(
@@ -73,11 +111,9 @@ class _AddingTaskScreenState extends ConsumerState<AddingTaskScreen> {
                     lastDate: DateTime.now().add(const Duration(days: 360)),
                   );
                   if (date != null) {
-                    setState(() {
-                      selectedDate = date;
-                      dateEditingController.text =
-                          DateFormat('MMM dd yyyy').format(date);
-                    });
+                    selectedDate.value = date;
+                    dateEditingController.text =
+                        DateFormat('MMM dd yyyy').format(date);
                   }
                 },
                 child: TextFormField(
@@ -88,7 +124,6 @@ class _AddingTaskScreenState extends ConsumerState<AddingTaskScreen> {
               ),
               const SizedBox(height: 10),
 
-              // Hora de recordatorio
               GestureDetector(
                 onTap: () async {
                   final notifier = ref.read(homeProvider.notifier);
@@ -101,10 +136,8 @@ class _AddingTaskScreenState extends ConsumerState<AddingTaskScreen> {
                       initialTime: TimeOfDay.now(),
                     );
                     if (time != null) {
-                      setState(() {
-                        selectedTime = time;
-                        reminderEditingController.text = time.format(context);
-                      });
+                      selectedTime.value = time;
+                      reminderEditingController.text = time.format(context);
                     }
                   } else {
                     await showDialog(
@@ -122,9 +155,7 @@ class _AddingTaskScreenState extends ConsumerState<AddingTaskScreen> {
                         ],
                       ),
                     );
-                    setState(() {
-                      reminderEditingController.clear();
-                    });
+                    reminderEditingController.clear();
                   }
                 },
                 child: TextFormField(
@@ -134,11 +165,11 @@ class _AddingTaskScreenState extends ConsumerState<AddingTaskScreen> {
                   enabled: false,
                 ),
               ),
+
               const SizedBox(height: 10),
 
-              // Dropdown frecuencia
               DropdownButton<TaskFrequency>(
-                value: taskFrequency,
+                value: taskFrequency.value,
                 items: TaskFrequency.values.map((freq) {
                   return DropdownMenuItem(
                     value: freq,
@@ -146,12 +177,12 @@ class _AddingTaskScreenState extends ConsumerState<AddingTaskScreen> {
                   );
                 }).toList(),
                 onChanged: (val) {
-                  if (val != null) setState(() => taskFrequency = val);
+                  if (val != null) taskFrequency.value = val;
                 },
               ),
+
               const SizedBox(height: 20),
 
-              // Subtasks section
               Row(
                 children: [
                   Expanded(
@@ -160,99 +191,47 @@ class _AddingTaskScreenState extends ConsumerState<AddingTaskScreen> {
                       decoration: const InputDecoration(
                         hintText: 'Agregar subtarea...',
                       ),
-                      onSubmitted: (_) => _addSubtask(),
+                      onSubmitted: (_) => addSubTask(),
                     ),
                   ),
                   IconButton(
                     icon: const Icon(Icons.add_circle_outline),
-                    onPressed: _addSubtask,
+                    onPressed: addSubTask,
                   ),
                 ],
               ),
               const SizedBox(height: 10),
 
-              // Lista de subtareas agregadas
-              if (subtasks.isNotEmpty)
+              if (subtasks.value.isNotEmpty)
                 ListView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  itemCount: subtasks.length,
+                  itemCount: subtasks.value.length,
                   itemBuilder: (context, index) {
-                    final subtask = subtasks[index];
+                    final subtask = subtasks.value[index];
                     return ListTile(
                       title: Text(subtask),
                       trailing: IconButton(
                         icon: const Icon(Icons.delete_outline),
                         onPressed: () {
-                          setState(() => subtasks.removeAt(index));
+                          subtasks.value = [...subtasks.value..removeAt(index)];
                         },
                       ),
                     );
                   },
                 ),
-
               const SizedBox(height: 20),
 
-              // Botón principal
               ElevatedButton(
-                onPressed: isLoading ? null : _onSavePressed,
+                onPressed: isLoading ? null : onSave,
                 child: isLoading
                     ? const CircularProgressIndicator()
-                    : Text(widget.task == null ? 'Agregar' : 'Editar'),
+                    : Text(task == null ? 'Agregar' : 'Editar'),
               ),
             ],
           ),
         ),
       ),
-    );
-  }
-
-  void _addSubtask() {
-    final text = subtaskController.text.trim();
-    if (text.isNotEmpty) {
-      setState(() {
-        subtasks.add(text);
-        subtaskController.clear();
-      });
-    }
-  }
-
-  Future<void> _onSavePressed() async {
-    if (titleEditingController.text.isEmpty) return;
-
-    final reminderDateTime =
-        selectedTime != null ? _combineDateAndTime() : null;
-
-    if (widget.task == null) {
-      await ref.read(homeProvider.notifier).createRecurringTask(
-            title: titleEditingController.text,
-            frequency: taskFrequency,
-            startDate: selectedDate,
-            reminderDate: reminderDateTime,
-            subtasks: subtasks,
-          );
-    } else {
-      await ref.read(homeProvider.notifier).editRecurringTask(
-            title: titleEditingController.text,
-            frequency: taskFrequency,
-            startDate: selectedDate,
-            reminderDate: reminderDateTime,
-            templateId: widget.task!.templateId,
-            instanceId: widget.task!.instanceId,
-            subtasks: subtasks,
-          );
-    }
-
-    if (context.mounted) context.pop();
-  }
-
-  DateTime _combineDateAndTime() {
-    return DateTime(
-      selectedDate.year,
-      selectedDate.month,
-      selectedDate.day,
-      selectedTime?.hour ?? 0,
-      selectedTime?.minute ?? 0,
     );
   }
 

@@ -1,23 +1,19 @@
 import 'package:auto_admin_app/core/constants/routes.dart';
 import 'package:auto_admin_app/features/auth/injection/auth_injection.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-class RegisterScreen extends ConsumerStatefulWidget {
+class RegisterScreen extends HookConsumerWidget {
   const RegisterScreen({super.key});
 
   @override
-  ConsumerState<RegisterScreen> createState() => _RegisterScreenState();
-}
-
-class _RegisterScreenState extends ConsumerState<RegisterScreen> {
-  final TextEditingController fullNameController = TextEditingController();
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final TextEditingController fullNameController = useTextEditingController();
+    final TextEditingController emailController = useTextEditingController();
+    final TextEditingController passwordController = useTextEditingController();
     return Scaffold(
       appBar: AppBar(
         title: Text('Registro'),
@@ -50,11 +46,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             FilledButton(
               onPressed: () async {
                 await ref.read(authNotifierProvider.notifier).register(
-                  email: emailController.text,
-                  password: passwordController.text,
-                  fullName: fullNameController.text,
-                );
-                if(context.mounted){
+                      email: emailController.text,
+                      password: passwordController.text,
+                      fullName: fullNameController.text,
+                    );
+                if (context.mounted) {
                   context.pushReplacementNamed(Routes.home);
                 }
               },
