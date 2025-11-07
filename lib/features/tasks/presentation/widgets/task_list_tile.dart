@@ -23,7 +23,7 @@ class _TaskListTileState extends ConsumerState<TaskListTile> {
   bool _expanded = false;
 
   void _toggleSubtaskCompletion(Subtask subtask) {
-    final notifier = ref.read(homeNotifierProvider.notifier);
+    final notifier = ref.read(homeProvider.notifier);
     notifier.toggleSubtaskCompletion(task: widget.task, subtask: subtask);
 
     // Si todos los subtasks están completos → marcar el task principal
@@ -52,9 +52,8 @@ class _TaskListTileState extends ConsumerState<TaskListTile> {
             borderRadius: BorderRadius.circular(8),
             onTap: hasSubtasks
                 ? () => setState(() => _expanded = !_expanded)
-                : () => ref
-                    .read(homeNotifierProvider.notifier)
-                    .completeTask(task: task),
+                : () =>
+                    ref.read(homeProvider.notifier).completeTask(task: task),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               child: Row(
@@ -112,7 +111,7 @@ class _TaskListTileState extends ConsumerState<TaskListTile> {
                                 ElevatedButton(
                                   onPressed: () async {
                                     await ref
-                                        .read(homeNotifierProvider.notifier)
+                                        .read(homeProvider.notifier)
                                         .deleteRecurringTask(
                                           templateId: task.templateId,
                                           scope: DeleteScope.all,

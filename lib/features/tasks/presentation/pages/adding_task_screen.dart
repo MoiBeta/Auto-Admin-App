@@ -46,7 +46,7 @@ class _AddingTaskScreenState extends ConsumerState<AddingTaskScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isLoading = ref.watch(homeNotifierProvider).isLoading;
+    final isLoading = ref.watch(homeProvider).isLoading;
 
     return Scaffold(
       appBar: AppBar(
@@ -91,7 +91,7 @@ class _AddingTaskScreenState extends ConsumerState<AddingTaskScreen> {
               // Hora de recordatorio
               GestureDetector(
                 onTap: () async {
-                  final notifier = ref.read(homeNotifierProvider.notifier);
+                  final notifier = ref.read(homeProvider.notifier);
                   final granted = await notifier.checkNotificationPermission();
 
                   if (!context.mounted) return;
@@ -224,7 +224,7 @@ class _AddingTaskScreenState extends ConsumerState<AddingTaskScreen> {
         selectedTime != null ? _combineDateAndTime() : null;
 
     if (widget.task == null) {
-      await ref.read(homeNotifierProvider.notifier).createRecurringTask(
+      await ref.read(homeProvider.notifier).createRecurringTask(
             title: titleEditingController.text,
             frequency: taskFrequency,
             startDate: selectedDate,
@@ -232,7 +232,7 @@ class _AddingTaskScreenState extends ConsumerState<AddingTaskScreen> {
             subtasks: subtasks,
           );
     } else {
-      await ref.read(homeNotifierProvider.notifier).editRecurringTask(
+      await ref.read(homeProvider.notifier).editRecurringTask(
             title: titleEditingController.text,
             frequency: taskFrequency,
             startDate: selectedDate,

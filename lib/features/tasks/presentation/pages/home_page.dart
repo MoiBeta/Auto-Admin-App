@@ -16,7 +16,7 @@ class HomePage extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
   ) {
-    AsyncValue<List<Task>> tasksList = ref.watch(homeNotifierProvider);
+    AsyncValue<List<Task>> tasksList = ref.watch(homeProvider);
     DateTime selectedDate = ref.watch(selectedDateProvider);
     return Scaffold(
       drawer: HomeDrawer(),

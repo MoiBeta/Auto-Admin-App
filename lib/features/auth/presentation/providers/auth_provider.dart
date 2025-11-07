@@ -9,33 +9,35 @@ import 'package:auto_admin_app/features/auth/domain/usecases/inputs/change_passw
 import 'package:auto_admin_app/features/auth/domain/usecases/inputs/login_data.dart';
 import 'package:auto_admin_app/features/auth/domain/usecases/inputs/sign_up_data.dart';
 import 'package:auto_admin_app/features/auth/domain/usecases/resend_confirmation_code.dart';
+import 'package:auto_admin_app/features/auth/injection/auth_injection.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class AuthNotifier extends StateNotifier<LoginState> {
-  final GetAuthState _getAuthState;
-  final AuthLogin _authLogin;
-  final AuthRegister _authRegister;
-  final ConfirmEmail _confirmEmail;
-  final ResendConfirmationCode _resendConfirmationCode;
-  final AuthLogout _authLogout;
-  final ChangePassword _changePassword;
+class AuthNotifier extends Notifier<LoginState> {
+  late final GetAuthState _getAuthState;
+  late final AuthLogin _authLogin;
+  late final AuthRegister _authRegister;
+  late final ConfirmEmail _confirmEmail;
+  late final ResendConfirmationCode _resendConfirmationCode;
+  late final AuthLogout _authLogout;
+  late final ChangePassword _changePassword;
 
   TextEditingController emailController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
 
-  AuthNotifier(
-    this._getAuthState,
-    this._authLogin,
-    this._authRegister,
-    this._confirmEmail,
-    this._resendConfirmationCode,
-    this._authLogout,
-    this._changePassword,
-  ) : super(LoginState(
-          isLoading: true,
-        )) {
+  @override
+  LoginState build() {
+    _getAuthState = ref.read(getAuthStateUseCaseProvider);
+    _authLogin = ref.read(authLoginUseCaseProvider);
+    _authRegister = ref.read(authRegisterUseCaseProvider);
+    _confirmEmail = ref.read(confirmEmailUseCaseProvider);
+    _resendConfirmationCode = ref.read(resendConfirmationCodeUseCaseProvider);
+    _authLogout = ref.read(authLogoutUseCaseProvider);
+    _changePassword = ref.read(changePasswordUseCaseProvider);
     _check();
+    return LoginState(
+      isLoading: true,
+    );
   }
 
   Future<void> _check() async {

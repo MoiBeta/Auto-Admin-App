@@ -41,14 +41,5 @@ Provider<ChangePassword> changePasswordUseCaseProvider =
     Provider<ChangePassword>(
         (ref) => ChangePassword(ref.watch(authRepositoryProvider)));
 
-final authNotifierProvider = StateNotifierProvider<AuthNotifier, LoginState>(
-        (ref) => AuthNotifier(
-        ref.read(getAuthStateUseCaseProvider),
-        ref.read(authLoginUseCaseProvider),
-        ref.read(authRegisterUseCaseProvider),
-        ref.read(confirmEmailUseCaseProvider),
-        ref.read(resendConfirmationCodeUseCaseProvider),
-        ref.read(authLogoutUseCaseProvider),
-        ref.read(changePasswordUseCaseProvider),
-    ),
-);
+final authNotifierProvider =
+    NotifierProvider<AuthNotifier, LoginState>(() => AuthNotifier());
