@@ -52,7 +52,7 @@ GoRouter router(Ref ref) {
     ],
     redirect: (context, state) {
       final isAuthenticated =
-          ref.read(authNotifierProvider).credentials != null;
+          ref.read(authNotifierProvider).value?.credentials != null;
 
       if (state.uri.toString() == Routes.splash) return null;
 

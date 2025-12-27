@@ -11,7 +11,7 @@ class SplashScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final LoginState authState = ref.watch(authNotifierProvider);
+    final AsyncValue<LoginState> authState = ref.watch(authNotifierProvider);
 
     if (authState.isLoading) {
       return Scaffold(
@@ -23,11 +23,11 @@ class SplashScreen extends ConsumerWidget {
 
     if (authState.hasError) {
       return Scaffold(
-        body: Center(child: Text('Error: ${authState.errorMessage}')),
+        body: Center(child: Text('Error: ${authState.value?.errorMessage}')),
       );
     }
 
-    if (authState.credentials != null) {
+    if (authState.value?.credentials != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!context.mounted) return;
         context.go(Routes.home);

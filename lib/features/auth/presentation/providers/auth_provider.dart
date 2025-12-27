@@ -13,7 +13,7 @@ import 'package:auto_admin_app/features/auth/injection/auth_injection.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class AuthNotifier extends Notifier<LoginState> {
+class AuthNotifier extends AsyncNotifier<LoginState> {
   late final GetAuthState _getAuthState;
   late final AuthLogin _authLogin;
   late final AuthRegister _authRegister;
@@ -26,7 +26,7 @@ class AuthNotifier extends Notifier<LoginState> {
   TextEditingController passwordController = TextEditingController();
 
   @override
-  LoginState build() {
+  Future<LoginState> build() async {
     _getAuthState = ref.read(getAuthStateUseCaseProvider);
     _authLogin = ref.read(authLoginUseCaseProvider);
     _authRegister = ref.read(authRegisterUseCaseProvider);
@@ -34,34 +34,28 @@ class AuthNotifier extends Notifier<LoginState> {
     _resendConfirmationCode = ref.read(resendConfirmationCodeUseCaseProvider);
     _authLogout = ref.read(authLogoutUseCaseProvider);
     _changePassword = ref.read(changePasswordUseCaseProvider);
-    _check();
-    return LoginState(
-      isLoading: true,
-    );
-  }
-
-  Future<void> _check() async {
-    state = state.copyWith(
-      isLoading: true,
-    );
     AuthCredential? authCredential = await _getAuthState();
-    state = state.copyWith(
+    return LoginState(
       isLoading: false,
       credentials: authCredential,
     );
   }
 
   Future<void> login() async {
-    state = state.copyWith(
-      isLoading: true,
+    state = AsyncData(
+      state.value!.copyWith(
+        isLoading: true,
+      ),
     );
     AuthCredential? authCredential = await _authLogin(LoginData(
       email: emailController.text,
       password: passwordController.text,
     ));
-    state = state.copyWith(
-      isLoading: false,
-      credentials: authCredential,
+    state = AsyncData(
+      state.value!.copyWith(
+        isLoading: false,
+        credentials: authCredential,
+      ),
     );
   }
 
@@ -70,27 +64,35 @@ class AuthNotifier extends Notifier<LoginState> {
     required String email,
     required String password,
   }) async {
-    state = state.copyWith(
-      isLoading: true,
+    state = AsyncData(
+      state.value!.copyWith(
+        isLoading: true,
+      ),
     );
     AuthCredential? authCredential = await _authRegister.call(
       SignUpData(email: email, password: password, fullName: fullName),
     );
-    state = state.copyWith(
-      isLoading: false,
-      credentials: authCredential,
+    state = AsyncData(
+      state.value!.copyWith(
+        isLoading: false,
+        credentials: authCredential,
+      ),
     );
   }
 
   Future<void> confirmEmail() async {
-    state = state.copyWith(
-      isLoading: true,
+    state = AsyncData(
+      state.value!.copyWith(
+        isLoading: true,
+      ),
     );
     bool confirmed = await _confirmEmail.call();
-    state = state.copyWith(
-      isLoading: false,
-      credentials: state.credentials?.copyWith(
-        isEmailConfirmed: confirmed,
+    state = AsyncData(
+      state.value!.copyWith(
+        isLoading: false,
+        credentials: state.value?.credentials?.copyWith(
+          isEmailConfirmed: confirmed,
+        ),
       ),
     );
   }
@@ -101,8 +103,10 @@ class AuthNotifier extends Notifier<LoginState> {
 
   Future<void> logout() async {
     await _authLogout();
-    state = state.copyWith(
-      credentials: null,
+    state = AsyncData(
+      state.value!.copyWith(
+        credentials: null,
+      ),
     );
   }
 
@@ -110,14 +114,18 @@ class AuthNotifier extends Notifier<LoginState> {
     required String oldPassword,
     required String newPassword,
   }) async {
-    state = state.copyWith(
-      isLoading: true,
+    state = AsyncData(
+      state.value!.copyWith(
+        isLoading: true,
+      ),
     );
     bool success = await _changePassword(
       ChangePasswordData(oldPassword: oldPassword, newPassword: newPassword),
     );
-    state = state.copyWith(
-      isLoading: false,
+    state = AsyncData(
+      state.value!.copyWith(
+        isLoading: false,
+      ),
     );
     return success;
   }

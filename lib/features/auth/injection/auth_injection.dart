@@ -42,4 +42,4 @@ Provider<ChangePassword> changePasswordUseCaseProvider =
         (ref) => ChangePassword(ref.watch(authRepositoryProvider)));
 
 final authNotifierProvider =
-    NotifierProvider<AuthNotifier, LoginState>(() => AuthNotifier());
+    AsyncNotifierProvider<AuthNotifier, LoginState>(() => AuthNotifier());
