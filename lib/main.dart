@@ -4,6 +4,7 @@ import 'package:auto_admin_app/global/theme/app_theme.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 
@@ -40,6 +41,16 @@ class MyApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
     return MaterialApp.router(
+      locale: const Locale('es'),
+      supportedLocales: const [
+        Locale('es'),
+        Locale('en'),
+      ],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       debugShowCheckedModeBanner: false,
       routerDelegate: router.routerDelegate,
       routeInformationParser: router.routeInformationParser,

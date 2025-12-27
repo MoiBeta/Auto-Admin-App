@@ -18,6 +18,7 @@ class HomePage extends ConsumerWidget {
   ) {
     AsyncValue<List<Task>> tasksList = ref.watch(homeProvider);
     DateTime selectedDate = ref.watch(selectedDateProvider);
+    final dates = getDateTimeRange();
     return Scaffold(
       drawer: HomeDrawer(),
       appBar: AppBar(
@@ -28,9 +29,23 @@ class HomePage extends ConsumerWidget {
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                ...getDateTimeRange().map(
-                  (date) => GestureDetector(
+                ...dates.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final date = entry.value;
+
+                  final currentMonth =
+                      intl.DateFormat('MMM', 'es').format(date);
+
+                  final previousMonth = index > 0
+                      ? intl.DateFormat('MMM', 'es').format(dates[index - 1])
+                      : null;
+
+                  final shouldShowMonth =
+                      index == 0 || currentMonth != previousMonth;
+
+                  return GestureDetector(
                     onTap: () {
                       ref.read(selectedDateProvider.notifier).selectDate(date);
                     },
@@ -52,17 +67,27 @@ class HomePage extends ConsumerWidget {
                       padding: EdgeInsets.all(5),
                       child: Column(
                         children: [
+                          if (shouldShowMonth)
+                            Text(
+                              intl.DateFormat('MMM').format(date),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           Text(
-                            intl.DateFormat('dd').format(date),
+                            intl.DateFormat('EEE', 'es')
+                                .format(date)
+                                .toUpperCase(),
+                            style: const TextStyle(fontSize: 12),
                           ),
                           Text(
-                            intl.DateFormat('MMM').format(date),
+                            intl.DateFormat('dd').format(date),
                           ),
                         ],
                       ),
                     ),
-                  ),
-                ),
+                  );
+                }),
               ],
             ),
             Expanded(
