@@ -42,8 +42,11 @@ class _TaskListTileState extends ConsumerState<TaskListTile> {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       decoration: BoxDecoration(
-        color: Colors.grey.withAlpha(40),
-        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: Colors.grey.withAlpha(40),
+          width: 5,
+        ),
+        borderRadius: BorderRadius.circular(16),
       ),
       margin: const EdgeInsets.only(bottom: 8),
       child: Column(
@@ -55,7 +58,7 @@ class _TaskListTileState extends ConsumerState<TaskListTile> {
                 : () =>
                     ref.read(homeProvider.notifier).completeTask(task: task),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -73,6 +76,8 @@ class _TaskListTileState extends ConsumerState<TaskListTile> {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
                           decoration: task.completed
                               ? TextDecoration.lineThrough
                               : null,
