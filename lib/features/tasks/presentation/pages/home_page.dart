@@ -96,9 +96,11 @@ class HomePage extends ConsumerWidget {
                 child: tasksList.when(
                   data: (data) => ReorderableListView(
                     onReorder: (int oldIndex, int newIndex) async {
-                      /* ref
-                          .read(homeNotifierProvider.notifier)
-                          .updateTaskPriorities(oldIndex, newIndex);*/
+                      if (newIndex > oldIndex) {
+                        newIndex -= 1;
+                      }
+                      ref.read(homeProvider.notifier).updateTaskPriorities(
+                          oldIndex: oldIndex, newIndex: newIndex);
                     },
                     children: [
                       ...data.asMap().entries.map(

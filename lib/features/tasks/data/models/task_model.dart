@@ -16,6 +16,7 @@ class TaskModel {
   final String templateId;
   final String instanceId;
   TaskFrequency taskFrequency;
+  int priority;
 
   TaskModel({
     required this.id,
@@ -26,6 +27,7 @@ class TaskModel {
     required this.templateId,
     required this.instanceId,
     required this.taskFrequency,
+    required this.priority,
     this.completedAt,
     this.description,
     this.subtasks,
@@ -43,6 +45,7 @@ class TaskModel {
         templateId: templateId,
         instanceId: instanceId,
         taskFrequency: taskFrequency,
+        priority: priority,
       );
 
   factory TaskModel.fromTemplateAndInstance(
@@ -59,6 +62,7 @@ class TaskModel {
       templateId: template.id,
       instanceId: instance.id,
       taskFrequency: template.frequency,
+      priority: template.priority,
     );
   }
 }

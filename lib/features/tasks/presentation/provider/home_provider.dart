@@ -61,16 +61,18 @@ class HomeNotifier extends _$HomeNotifier {
     List<String>? subtasks,
   }) async {
     state = const AsyncLoading();
+    List<Task> tasks = List<Task>.from(state.value ?? []);
+    final int newPriority = tasks.isEmpty ? 100 : tasks.last.priority + 100;
+
     Task newTask = await _createNewTask.call(
       TaskData(
         title: title,
         startDate: startDate,
         frequency: frequency,
-        priority: state.value == null ? 0 : state.value!.length,
+        priority: newPriority,
         subTasks: subtasks,
       ),
     );
-    List<Task> tasks = List<Task>.from(state.value ?? []);
     tasks.add(newTask);
     state = AsyncData(tasks);
     if (reminderDate != null) {
@@ -208,6 +210,55 @@ class HomeNotifier extends _$HomeNotifier {
       await cancelTaskNotification(task.id);
     } else {
       await scheduleTaskNotification.call(task);
+    }
+  }
+
+  Future<void> updateTaskPriorities({
+    required int oldIndex,
+    required int newIndex,
+  }) async {
+    final previousTasks = List<Task>.from(state.value ?? []);
+    if (previousTasks.isEmpty) return;
+
+    if (newIndex > oldIndex) {
+      newIndex -= 1;
+    }
+
+    final tasks = List<Task>.from(previousTasks);
+    final movedTask = tasks.removeAt(oldIndex);
+    tasks.insert(newIndex, movedTask);
+
+    final before = newIndex > 0 ? tasks[newIndex - 1] : null;
+    final after = newIndex < tasks.length - 1 ? tasks[newIndex + 1] : null;
+
+    int newPriority;
+    if (before != null && after != null) {
+      newPriority = (before.priority + after.priority) ~/ 2;
+    } else if (before == null && after != null) {
+      newPriority = after.priority - 100;
+    } else if (before != null && after == null) {
+      newPriority = before.priority + 100;
+    } else {
+      newPriority = 100;
+    }
+
+    final updatedTask = movedTask.copyWith(priority: newPriority);
+    tasks[newIndex] = updatedTask;
+
+    state = AsyncData(tasks);
+
+    try {
+      await _updateTaskTemplate.call(
+        UpdateTaskTemplateData(
+          templateId: updatedTask.templateId,
+          title: updatedTask.title,
+          startDate: updatedTask.startDate,
+          frequency: updatedTask.taskFrequency,
+          priority: newPriority,
+        ),
+      );
+    } catch (e, st) {
+      state = AsyncData(previousTasks);
     }
   }
 }

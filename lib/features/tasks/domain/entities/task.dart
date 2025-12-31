@@ -14,6 +14,7 @@ class Task {
   final String instanceId;
   TaskFrequency taskFrequency;
   DateTime? reminderDate;
+  int priority;
 
   Task({
     required this.id,
@@ -24,6 +25,7 @@ class Task {
     required this.templateId,
     required this.instanceId,
     required this.taskFrequency,
+    required this.priority,
     this.completedAt,
     this.description,
     this.subtasks = const [],
@@ -43,6 +45,7 @@ class Task {
     String? instanceId,
     TaskFrequency? taskFrequency,
     DateTime? reminderDate,
+    int? priority,
   }) {
     return Task(
       id: id ?? this.id,
@@ -57,6 +60,7 @@ class Task {
       instanceId: instanceId ?? this.instanceId,
       taskFrequency: taskFrequency ?? this.taskFrequency,
       reminderDate: reminderDate ?? this.reminderDate,
+      priority: priority ?? this.priority,
     );
   }
 }
