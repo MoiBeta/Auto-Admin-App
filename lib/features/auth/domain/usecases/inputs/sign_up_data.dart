@@ -8,4 +8,10 @@ class SignUpData {
     required this.password,
     required this.fullName,
   });
+
+  Map<String, dynamic> toJson() => {
+        'email': email,
+        'password': password,
+        'name': fullName,
+      };
 }

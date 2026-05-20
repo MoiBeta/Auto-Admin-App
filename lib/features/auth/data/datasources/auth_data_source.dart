@@ -6,7 +6,6 @@ import 'package:auto_admin_app/features/auth/domain/usecases/inputs/sign_up_data
 abstract class AuthDataSource {
   Future<bool> changePassword(ChangePasswordData changePasswordData);
   Future<bool> confirmEmail();
-  Future<String?> getAccessToken();
   Future<AuthCredentialModel?> getAuthState();
   Future<AuthCredentialModel?> login(LoginData loginData);
   Future<void> logout();

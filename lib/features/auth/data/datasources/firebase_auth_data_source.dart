@@ -36,12 +36,6 @@ class FirebaseAuthDataSource extends AuthDataSource {
   }
 
   @override
-  Future<String?> getAccessToken() async {
-    final user = _auth.currentUser;
-    return user?.getIdToken();
-  }
-
-  @override
   Future<AuthCredentialModel?> getAuthState() async {
     final user = _auth.currentUser;
 

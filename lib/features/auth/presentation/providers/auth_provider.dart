@@ -9,7 +9,7 @@ import 'package:auto_admin_app/features/auth/domain/usecases/inputs/change_passw
 import 'package:auto_admin_app/features/auth/domain/usecases/inputs/login_data.dart';
 import 'package:auto_admin_app/features/auth/domain/usecases/inputs/sign_up_data.dart';
 import 'package:auto_admin_app/features/auth/domain/usecases/resend_confirmation_code.dart';
-import 'package:auto_admin_app/features/auth/injection/auth_injection.dart';
+import 'package:auto_admin_app/features/auth/injection/auth_providers.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

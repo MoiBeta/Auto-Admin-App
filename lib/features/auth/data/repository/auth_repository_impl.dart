@@ -5,7 +5,7 @@ import 'package:auto_admin_app/features/auth/domain/usecases/inputs/change_passw
 import 'package:auto_admin_app/features/auth/domain/usecases/inputs/login_data.dart';
 import 'package:auto_admin_app/features/auth/domain/usecases/inputs/sign_up_data.dart';
 
-class AuthRepositoryImpl extends AuthRepository{
+class AuthRepositoryImpl extends AuthRepository {
   final AuthDataSource authDataSource;
   AuthRepositoryImpl(this.authDataSource);
 
@@ -17,11 +17,6 @@ class AuthRepositoryImpl extends AuthRepository{
   @override
   Future<bool> confirmEmail() async {
     return authDataSource.confirmEmail();
-  }
-
-  @override
-  Future<String?> getAccessToken() async {
-    return authDataSource.getAccessToken();
   }
 
   @override
@@ -41,7 +36,9 @@ class AuthRepositoryImpl extends AuthRepository{
 
   @override
   Future<AuthCredential?> registerUser(SignUpData signUpData) async {
-    return authDataSource.registerUser(signUpData).then((value) => value?.toEntity());
+    return authDataSource
+        .registerUser(signUpData)
+        .then((value) => value?.toEntity());
   }
 
   @override

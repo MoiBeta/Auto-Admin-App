@@ -1,5 +1,3 @@
-import 'dart:developer';
-
 import 'package:auto_admin_app/features/tasks/data/models/sub_task_model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -25,7 +23,6 @@ class TaskInstance {
   factory TaskInstance.fromDoc(DocumentSnapshot doc) {
     List<SubTaskModel> subTasks = [];
     try {
-      log('Subtasks: ${doc['subtasks'].toString()}');
       subTasks = (doc['subtasks'] as List<dynamic>)
           .map((json) => SubTaskModel.fromJson(json))
           .toList();

@@ -5,8 +5,6 @@ import 'package:auto_admin_app/features/auth/domain/usecases/inputs/sign_up_data
 
 abstract class AuthRepository {
   Future<AuthCredential?> getAuthState();
-  
-  Future<String?> getAccessToken();
 
   Future<AuthCredential?> login(LoginData loginData);
 

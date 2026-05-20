@@ -2,7 +2,7 @@ class AuthCredential {
   final String? id;
   final String? fullName;
   final String? email;
-  final bool isEmailConfirmed;
+  final bool? isEmailConfirmed;
 
   AuthCredential({
     required this.id,

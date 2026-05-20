@@ -69,7 +69,9 @@ class HomePage extends ConsumerWidget {
                         children: [
                           if (shouldShowMonth)
                             Text(
-                              intl.DateFormat('MMM').format(date),
+                              intl.DateFormat('MMM', 'es')
+                                  .format(date)
+                                  .toUpperCase(),
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                               ),

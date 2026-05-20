@@ -1,5 +1,5 @@
 import 'package:auto_admin_app/core/constants/routes.dart';
-import 'package:auto_admin_app/features/auth/injection/auth_injection.dart';
+import 'package:auto_admin_app/features/auth/injection/auth_providers.dart';
 import 'package:auto_admin_app/features/auth/presentation/pages/auth_page.dart';
 import 'package:auto_admin_app/features/auth/presentation/pages/login_screen.dart';
 import 'package:auto_admin_app/features/auth/presentation/pages/register_screen.dart';

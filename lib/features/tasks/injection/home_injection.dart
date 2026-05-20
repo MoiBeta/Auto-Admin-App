@@ -1,5 +1,8 @@
+import 'package:auto_admin_app/core/network/dio_client.dart';
+import 'package:auto_admin_app/core/network/interceptors/auth_interceptor.dart';
+import 'package:auto_admin_app/features/auth/injection/auth_providers.dart';
 import 'package:auto_admin_app/features/tasks/data/datasources/data_source.dart';
-import 'package:auto_admin_app/features/tasks/data/datasources/firestore_data_source.dart';
+import 'package:auto_admin_app/features/tasks/data/datasources/habits_remote_data_source.dart';
 import 'package:auto_admin_app/features/tasks/data/datasources/notification_local_data_source.dart';
 import 'package:auto_admin_app/features/tasks/data/datasources/notification_local_data_source_impl.dart';
 import 'package:auto_admin_app/features/tasks/data/repositories/notification_repository_impl.dart';
@@ -13,24 +16,40 @@ import 'package:auto_admin_app/features/tasks/domain/use_cases/get_all_tasks.dar
 import 'package:auto_admin_app/features/tasks/domain/use_cases/schedule_task_notification.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/update_task_instance.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/update_task_template.dart';
+import 'package:auto_admin_app/global/di/global_providers.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Tasks Data Source which has all the logic to handle the tasks operations (get, delete, edit, etc)
-Provider<TasksDataSource> taskDataSourceProvider =
-    Provider<TasksDataSource>((_) => FirestoreDataSource());
+final habitsBaseUrlProvider =
+    Provider<String>((ref) => dotenv.env['HABITS_BASE_URL'] ?? '');
 
-/// Flutter local notification plugin provider which has all the logic to handle local notifications
+final habitsDioProvider = Provider<Dio>((ref) {
+  final baseUrl = ref.watch(habitsBaseUrlProvider);
+  final dio = Dio(BaseOptions(baseUrl: baseUrl));
+  final tokenManager = ref.watch(tokenManagerProvider);
+  final refreshDio = ref.watch(refreshDioProvider);
+  dio.interceptors.add(AuthInterceptor(tokenManager, refreshDio));
+  return dio;
+});
+
+final dioClientProvider = Provider<DioClient>((ref) {
+  final dio = ref.watch(habitsDioProvider);
+  return DioClient(dio);
+});
+
+Provider<TasksDataSource> taskDataSourceProvider = Provider<TasksDataSource>(
+    (ref) => HabitsRemoteDataSource(client: ref.watch(dioClientProvider)));
+
 final flutterLocalNotificationsProvider =
     Provider<FlutterLocalNotificationsPlugin>((_) {
   throw UnimplementedError();
 });
 
-/// Tasks repository provider which uses the data source to translate the request to the domain's contract
 Provider<TasksRepository> taskRepositoryProvider = Provider<TasksRepository>(
     (ref) => TaskRepositoryImpl(ref.watch(taskDataSourceProvider)));
 
-/// Notification local data source that receives the local notification plugins and uses it to schedule notifications
 final notificationLocalDataSourceProvider =
     Provider<NotificationLocalDataSource>(
   (ref) => NotificationLocalDataSourceImpl(
@@ -38,14 +57,12 @@ final notificationLocalDataSourceProvider =
   ),
 );
 
-/// Notification repository provider which uses the data source to translate the request to the domain's contract
 final notificationRepositoryProvider = Provider<NotificationRepository>(
   (ref) => NotificationRepositoryImpl(
     ref.watch(notificationLocalDataSourceProvider),
   ),
 );
 
-/// Tasks use cases providers
 Provider<CreateNewTask> createNewTaskProvider = Provider<CreateNewTask>(
     (ref) => CreateNewTask(ref.watch(taskRepositoryProvider)));
 
@@ -63,7 +80,6 @@ Provider<UpdateTaskInstance> updateTaskInstanceProvider =
     Provider<UpdateTaskInstance>(
         (ref) => UpdateTaskInstance(ref.watch(taskRepositoryProvider)));
 
-/// Notification use cases providers
 Provider<ScheduleTaskNotification> scheduleTaskNotificationProvider =
     Provider<ScheduleTaskNotification>((ref) =>
         ScheduleTaskNotification(ref.watch(notificationRepositoryProvider)));
