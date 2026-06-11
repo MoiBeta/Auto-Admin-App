@@ -57,7 +57,7 @@ class AddingTaskScreen extends HookConsumerWidget {
       }
 
       if (task == null) {
-        await ref.read(homeProvider.notifier).createRecurringTask(
+        await ref.read(homeProvider.notifier).createTask(
               title: titleEditingController.text,
               frequency: taskFrequency.value,
               startDate: selectedDate.value,
@@ -65,14 +65,13 @@ class AddingTaskScreen extends HookConsumerWidget {
               subtasks: subtasks.value,
             );
       } else {
-        await ref.read(homeProvider.notifier).editRecurringTask(
+        await ref.read(homeProvider.notifier).editTask(
               title: titleEditingController.text,
               frequency: taskFrequency.value,
               startDate: selectedDate.value,
               reminderDate: reminderDateTime,
-              templateId: task!.templateId,
-              instanceId: task!.instanceId,
               subtasks: subtasks.value,
+              taskId: task!.id,
             );
       }
 

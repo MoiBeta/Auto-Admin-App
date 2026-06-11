@@ -10,8 +10,6 @@ class Task {
   List<Subtask>? subtasks;
   bool completed;
   DateTime? completedAt;
-  final String templateId;
-  final String instanceId;
   TaskFrequency taskFrequency;
   DateTime? reminderDate;
   int priority;
@@ -22,8 +20,6 @@ class Task {
     required this.title,
     required this.startDate,
     required this.completed,
-    required this.templateId,
-    required this.instanceId,
     required this.taskFrequency,
     required this.priority,
     this.completedAt,
@@ -41,8 +37,6 @@ class Task {
     List<Subtask>? subtasks,
     bool? completed,
     DateTime? completedAt,
-    String? templateId,
-    String? instanceId,
     TaskFrequency? taskFrequency,
     DateTime? reminderDate,
     int? priority,
@@ -56,8 +50,6 @@ class Task {
       subtasks: subtasks ?? this.subtasks,
       completed: completed ?? this.completed,
       completedAt: completedAt ?? this.completedAt,
-      templateId: templateId ?? this.templateId,
-      instanceId: instanceId ?? this.instanceId,
       taskFrequency: taskFrequency ?? this.taskFrequency,
       reminderDate: reminderDate ?? this.reminderDate,
       priority: priority ?? this.priority,

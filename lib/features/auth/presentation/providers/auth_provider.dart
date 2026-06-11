@@ -14,26 +14,26 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class AuthNotifier extends AsyncNotifier<LoginState> {
-  late final GetAuthState _getAuthState;
-  late final AuthLogin _authLogin;
-  late final AuthRegister _authRegister;
-  late final ConfirmEmail _confirmEmail;
-  late final ResendConfirmationCode _resendConfirmationCode;
-  late final AuthLogout _authLogout;
-  late final ChangePassword _changePassword;
+  late GetAuthState _getAuthState;
+  late AuthLogin _authLogin;
+  late AuthRegister _authRegister;
+  late ConfirmEmail _confirmEmail;
+  late ResendConfirmationCode _resendConfirmationCode;
+  late AuthLogout _authLogout;
+  late ChangePassword _changePassword;
 
   TextEditingController emailController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
 
   @override
   Future<LoginState> build() async {
-    _getAuthState = ref.read(getAuthStateUseCaseProvider);
-    _authLogin = ref.read(authLoginUseCaseProvider);
-    _authRegister = ref.read(authRegisterUseCaseProvider);
-    _confirmEmail = ref.read(confirmEmailUseCaseProvider);
-    _resendConfirmationCode = ref.read(resendConfirmationCodeUseCaseProvider);
-    _authLogout = ref.read(authLogoutUseCaseProvider);
-    _changePassword = ref.read(changePasswordUseCaseProvider);
+    _getAuthState = ref.watch(getAuthStateUseCaseProvider);
+    _authLogin = ref.watch(authLoginUseCaseProvider);
+    _authRegister = ref.watch(authRegisterUseCaseProvider);
+    _confirmEmail = ref.watch(confirmEmailUseCaseProvider);
+    _resendConfirmationCode = ref.watch(resendConfirmationCodeUseCaseProvider);
+    _authLogout = ref.watch(authLogoutUseCaseProvider);
+    _changePassword = ref.watch(changePasswordUseCaseProvider);
     AuthCredential? authCredential = await _getAuthState();
     return LoginState(
       isLoading: false,
@@ -138,7 +138,7 @@ class LoginState {
   final String? errorMessage;
 
   const LoginState({
-    this.isLoading = false,
+    this.isLoading = true,
     this.hasError = false,
     this.credentials,
     this.errorMessage,

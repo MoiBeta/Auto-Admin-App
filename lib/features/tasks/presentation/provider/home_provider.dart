@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:auto_admin_app/features/tasks/data/enums/task_frequency.dart';
 import 'package:auto_admin_app/features/tasks/domain/entities/sub_task.dart';
 import 'package:auto_admin_app/features/tasks/domain/entities/task.dart';
@@ -8,10 +10,12 @@ import 'package:auto_admin_app/features/tasks/domain/use_cases/delete_task.dart'
 import 'package:auto_admin_app/features/tasks/domain/use_cases/get_all_tasks.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/delete_task_data.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/new_task_data.dart';
+import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/toggle_sub_task_data.dart';
+import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/toggle_task_data.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/update_task_data.dart';
-import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/update_task_instance_data.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/schedule_task_notification.dart';
-import 'package:auto_admin_app/features/tasks/domain/use_cases/update_task_instance.dart';
+import 'package:auto_admin_app/features/tasks/domain/use_cases/toggle_sub_task.dart';
+import 'package:auto_admin_app/features/tasks/domain/use_cases/toggle_task.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/update_task_template.dart';
 import 'package:auto_admin_app/features/tasks/injection/home_injection.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -24,10 +28,9 @@ class HomeNotifier extends _$HomeNotifier {
   late final CreateNewTask _createNewTask = ref.read(createNewTaskProvider);
   late final DeleteTask _deleteTask = ref.read(deleteTaskProvider);
   late final GetAllTasks _getAllTasks = ref.read(getAllTasksProvider);
-  late final UpdateTaskTemplate _updateTaskTemplate =
-      ref.read(updateTaskTemplateProvider);
-  late final UpdateTaskInstance _updateTaskInstance =
-      ref.read(updateTaskInstanceProvider);
+  late final UpdateTask _updateTask = ref.read(updateTaskProvider);
+  late final ToggleTask _toggleTask = ref.read(toggleTaskProvider);
+  late final ToggleSubTask _toggleSubtask = ref.read(toggleSubTaskProvider);
   late final ScheduleTaskNotification scheduleTaskNotification =
       ref.read(scheduleTaskNotificationProvider);
   late final CancelTaskNotification cancelTaskNotification =
@@ -53,7 +56,7 @@ class HomeNotifier extends _$HomeNotifier {
     }
   }
 
-  Future<void> createRecurringTask({
+  Future<void> createTask({
     required String title,
     required DateTime startDate,
     required TaskFrequency frequency,
@@ -65,7 +68,7 @@ class HomeNotifier extends _$HomeNotifier {
     final int newPriority = tasks.isEmpty ? 100 : tasks.last.priority + 100;
 
     Task newTask = await _createNewTask.call(
-      TaskData(
+      NewTaskData(
         title: title,
         startDate: startDate,
         frequency: frequency,
@@ -81,9 +84,8 @@ class HomeNotifier extends _$HomeNotifier {
     }
   }
 
-  Future<void> editRecurringTask({
-    required String templateId,
-    required String instanceId,
+  Future<void> editTask({
+    required String taskId,
     required String title,
     required DateTime startDate,
     required TaskFrequency frequency,
@@ -91,9 +93,9 @@ class HomeNotifier extends _$HomeNotifier {
     List<String>? subtasks,
   }) async {
     state = const AsyncLoading();
-    Task updatedTask = await _updateTaskTemplate.call(
-      UpdateTaskTemplateData(
-        templateId: templateId,
+    Task updatedTask = await _updateTask.call(
+      UpdateTaskData(
+        taskId: taskId,
         title: title,
         startDate: startDate,
         frequency: frequency,
@@ -101,7 +103,7 @@ class HomeNotifier extends _$HomeNotifier {
       ),
     );
     List<Task> tasks = List<Task>.from(state.value ?? []);
-    int index = tasks.indexWhere((task) => task.instanceId == instanceId);
+    int index = tasks.indexWhere((task) => task.id == taskId);
     tasks[index] = updatedTask;
     state = AsyncData(tasks);
     if (reminderDate != null) {
@@ -112,24 +114,22 @@ class HomeNotifier extends _$HomeNotifier {
     }
   }
 
-  Future<void> deleteRecurringTask({
-    required String templateId,
-    required String instanceId,
+  Future<void> deleteTask({
+    required String taskId,
     required DeleteScope scope,
     DateTime? referenceDate,
   }) async {
     await _deleteTask.call(
       DeleteTaskData(
-        templateId: templateId,
-        instanceId: instanceId,
+        taskId: taskId,
         scope: scope,
         referenceDate: referenceDate,
       ),
     );
     List<Task> tasks = List<Task>.from(state.value ?? []);
-    tasks.removeWhere((task) => task.id == instanceId);
+    tasks.removeWhere((task) => task.id == taskId);
     state = AsyncData(tasks);
-    await cancelTaskNotification(instanceId);
+    await cancelTaskNotification(taskId);
   }
 
   void listenDateChanges() {
@@ -138,19 +138,18 @@ class HomeNotifier extends _$HomeNotifier {
     });
   }
 
-  Future<void> completeTask({
+  Future<void> toggleTask({
     required Task task,
+    required DateTime date,
   }) async {
     List<Task> tasks = List<Task>.from(state.value ?? []);
     int index = tasks.indexWhere((currentTask) => currentTask.id == task.id);
     tasks[index] = task.copyWith(completed: !task.completed);
     state = AsyncData(tasks);
-    Task updatedTask = await _updateTaskInstance.call(
-      UpdateTaskInstanceData(
-        instanceId: task.instanceId,
-        completed: !task.completed,
-        completedAt: task.completed ? null : DateTime.now(),
-        subtaskStates: task.subtasks ?? [],
+    Task updatedTask = await _toggleTask.call(
+      ToggleTaskData(
+        taskId: task.id,
+        completedAt: date,
       ),
     );
     if (updatedTask.completed != tasks[index].completed) {
@@ -174,10 +173,10 @@ class HomeNotifier extends _$HomeNotifier {
     return granted ?? false;
   }
 
-  Future<void> toggleSubtaskCompletion({
-    required Task task,
-    required Subtask subtask,
-  }) async {
+  Future<void> toggleSubtask(
+      {required Task task,
+      required Subtask subtask,
+      required DateTime date}) async {
     final updatedSubtasks = task.subtasks!.map((s) {
       if (s.id == subtask.id) {
         return s.copyWith(completed: !s.completed);
@@ -187,17 +186,14 @@ class HomeNotifier extends _$HomeNotifier {
 
     final allCompleted = updatedSubtasks.every((s) => s.completed);
 
-    // Actualizar en la capa de datos usando el caso de uso existente
-    final updatedTask = await _updateTaskInstance.call(
-      UpdateTaskInstanceData(
-        instanceId: task.instanceId,
-        completed: allCompleted,
-        subtaskStates: updatedSubtasks,
-        completedAt: allCompleted ? DateTime.now() : null,
+    final updatedTask = await _toggleSubtask.call(
+      ToggleSubTaskData(
+        taskId: task.id,
+        subTaskId: subtask.id,
+        completedAt: date,
       ),
     );
 
-    // Reflejar el cambio en el estado local
     final tasks = List<Task>.from(state.value ?? []);
     final index = tasks.indexWhere((t) => t.id == task.id);
     if (index != -1) {
@@ -205,7 +201,6 @@ class HomeNotifier extends _$HomeNotifier {
       state = AsyncData(tasks);
     }
 
-    // Manejo de notificaciones
     if (allCompleted) {
       await cancelTaskNotification(task.id);
     } else {
@@ -248,9 +243,9 @@ class HomeNotifier extends _$HomeNotifier {
     state = AsyncData(tasks);
 
     try {
-      await _updateTaskTemplate.call(
-        UpdateTaskTemplateData(
-          templateId: updatedTask.templateId,
+      await _updateTask.call(
+        UpdateTaskData(
+          taskId: updatedTask.id,
           title: updatedTask.title,
           startDate: updatedTask.startDate,
           frequency: updatedTask.taskFrequency,
@@ -258,6 +253,7 @@ class HomeNotifier extends _$HomeNotifier {
         ),
       );
     } catch (e, st) {
+      log('Exception: $e stacktrace: $st');
       state = AsyncData(previousTasks);
     }
   }

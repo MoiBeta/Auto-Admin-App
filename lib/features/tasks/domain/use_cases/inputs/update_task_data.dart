@@ -1,7 +1,7 @@
 import 'package:auto_admin_app/features/tasks/data/enums/task_frequency.dart';
 
-class UpdateTaskTemplateData {
-  String templateId;
+class UpdateTaskData {
+  String taskId;
   String title;
   String? description;
   DateTime startDate;
@@ -9,8 +9,8 @@ class UpdateTaskTemplateData {
   List<String>? subTasks;
   int? priority;
 
-  UpdateTaskTemplateData({
-    required this.templateId,
+  UpdateTaskData({
+    required this.taskId,
     required this.title,
     required this.startDate,
     required this.frequency,

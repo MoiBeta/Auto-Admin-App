@@ -4,8 +4,9 @@ import 'package:auto_admin_app/features/tasks/domain/entities/task.dart';
 import 'package:auto_admin_app/features/tasks/domain/repository/tasks_repository.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/delete_task_data.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/new_task_data.dart';
+import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/toggle_sub_task_data.dart';
+import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/toggle_task_data.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/update_task_data.dart';
-import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/update_task_instance_data.dart';
 
 class TaskRepositoryImpl extends TasksRepository {
   final TasksDataSource tasksDataSource;
@@ -13,7 +14,7 @@ class TaskRepositoryImpl extends TasksRepository {
   TaskRepositoryImpl(this.tasksDataSource);
 
   @override
-  Future<Task> createNewTask(TaskData newTaskData) async {
+  Future<Task> createNewTask(NewTaskData newTaskData) async {
     TaskModel taskModel = await tasksDataSource.createNewTask(newTaskData);
     return taskModel.toEntity();
   }
@@ -24,24 +25,29 @@ class TaskRepositoryImpl extends TasksRepository {
   }
 
   @override
-  Future<Task> editTaskTemplate(UpdateTaskTemplateData updateTaskData) async {
-    TaskModel taskModel =
-        await tasksDataSource.editTaskTemplate(updateTaskData);
+  Future<Task> editTask(UpdateTaskData updateTaskData) async {
+    TaskModel taskModel = await tasksDataSource.editTask(updateTaskData);
     return taskModel.toEntity();
   }
 
   @override
   Future<List<Task>> getAllTasks(DateTime date) {
-    tasksDataSource.checkAndCreateUpcomingInstances();
     return tasksDataSource.getAllTasks(date).then((tasks) {
       return tasks.map((task) => task.toEntity()).toList();
     });
   }
 
   @override
-  Future<Task> editTaskInstance(UpdateTaskInstanceData updateTaskData) async {
-    TaskModel taskModel =
-        await tasksDataSource.editTaskInstance(updateTaskData);
-    return taskModel.toEntity();
+  Future<Task> toggleTask(ToggleTaskData data) {
+    return tasksDataSource.toggleTask(data).then((taskModel) {
+      return taskModel.toEntity();
+    });
+  }
+
+  @override
+  Future<Task> toggleSubTask(ToggleSubTaskData data) {
+    return tasksDataSource.toggleSubTask(data).then((taskModel) {
+      return taskModel.toEntity();
+    });
   }
 }

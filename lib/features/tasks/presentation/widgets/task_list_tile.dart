@@ -24,13 +24,15 @@ class _TaskListTileState extends ConsumerState<TaskListTile> {
 
   void _toggleSubtaskCompletion(Subtask subtask) {
     final notifier = ref.read(homeProvider.notifier);
-    notifier.toggleSubtaskCompletion(task: widget.task, subtask: subtask);
-
-    // Si todos los subtasks están completos → marcar el task principal
+    notifier.toggleSubtask(
+        task: widget.task,
+        subtask: subtask,
+        date: ref.read(selectedDateProvider));
     final allCompleted =
         widget.task.subtasks?.every((s) => s.completed) ?? false;
     if (allCompleted && !widget.task.completed) {
-      notifier.completeTask(task: widget.task);
+      notifier.toggleTask(
+          task: widget.task, date: ref.read(selectedDateProvider));
     }
   }
 
@@ -55,8 +57,8 @@ class _TaskListTileState extends ConsumerState<TaskListTile> {
             borderRadius: BorderRadius.circular(8),
             onTap: hasSubtasks
                 ? () => setState(() => _expanded = !_expanded)
-                : () =>
-                    ref.read(homeProvider.notifier).completeTask(task: task),
+                : () => ref.read(homeProvider.notifier).toggleTask(
+                    task: task, date: ref.read(selectedDateProvider)),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
               child: Row(
@@ -117,10 +119,9 @@ class _TaskListTileState extends ConsumerState<TaskListTile> {
                                   onPressed: () async {
                                     await ref
                                         .read(homeProvider.notifier)
-                                        .deleteRecurringTask(
-                                          templateId: task.templateId,
+                                        .deleteTask(
+                                          taskId: task.id,
                                           scope: DeleteScope.all,
-                                          instanceId: task.instanceId,
                                         );
                                     if (ctx.mounted) ctx.pop();
                                   },

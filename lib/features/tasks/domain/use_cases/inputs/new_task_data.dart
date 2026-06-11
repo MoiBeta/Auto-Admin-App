@@ -1,6 +1,6 @@
 import 'package:auto_admin_app/features/tasks/data/enums/task_frequency.dart';
 
-class TaskData {
+class NewTaskData {
   String title;
   String? description;
   DateTime startDate;
@@ -8,7 +8,7 @@ class TaskData {
   int priority;
   List<String>? subTasks;
 
-  TaskData({
+  NewTaskData({
     required this.title,
     required this.startDate,
     required this.frequency,
@@ -16,4 +16,15 @@ class TaskData {
     this.description,
     this.subTasks,
   });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'name': title,
+      'description': description,
+      'date': startDate.toIso8601String(),
+      'frequency': frequency.name,
+      'priority': priority,
+      'subTasks': subTasks,
+    };
+  }
 }

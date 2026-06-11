@@ -12,9 +12,6 @@ class TaskModel {
   DateTime startDate;
   List<SubTaskModel>? subtasks;
   bool completed;
-  DateTime? completedAt;
-  final String templateId;
-  final String instanceId;
   TaskFrequency taskFrequency;
   int priority;
 
@@ -24,11 +21,8 @@ class TaskModel {
     required this.title,
     required this.startDate,
     required this.completed,
-    required this.templateId,
-    required this.instanceId,
     required this.taskFrequency,
     required this.priority,
-    this.completedAt,
     this.description,
     this.subtasks,
   });
@@ -41,9 +35,6 @@ class TaskModel {
         startDate: startDate,
         subtasks: subtasks?.map((model) => model.toEntity()).toList(),
         completed: completed,
-        completedAt: completedAt,
-        templateId: templateId,
-        instanceId: instanceId,
         taskFrequency: taskFrequency,
         priority: priority,
       );
@@ -58,11 +49,38 @@ class TaskModel {
       subtasks: instance.subtasks,
       startDate: instance.date,
       completed: instance.completed,
-      completedAt: instance.completedAt,
-      templateId: template.id,
-      instanceId: instance.id,
       taskFrequency: template.frequency,
       priority: template.priority,
     );
+  }
+
+  factory TaskModel.fromJson(Map<String, dynamic> json) => TaskModel(
+        id: json['id'],
+        userId: json['userId'],
+        title: json['title'],
+        description: json['description'],
+        startDate: DateTime.parse(json['startDate']),
+        subtasks: (json['subtasks'] as List<dynamic>?)
+            ?.map((e) => SubTaskModel.fromJson(e))
+            .toList(),
+        completed: json['completed'],
+        taskFrequency: parseFrequency(json['taskFrequency']),
+        priority: parsePriority(json['priority']),
+      );
+
+  static TaskFrequency parseFrequency(dynamic frequency) {
+    if (frequency is String) {
+      return TaskFrequency.values.firstWhere(
+        (e) => e.name.toLowerCase() == frequency.toLowerCase(),
+        orElse: () => TaskFrequency.none,
+      );
+    }
+    return TaskFrequency.none;
+  }
+
+  static int parsePriority(dynamic priority) {
+    if (priority is int) return priority;
+    if (priority is String) return int.tryParse(priority) ?? 0;
+    return 0;
   }
 }

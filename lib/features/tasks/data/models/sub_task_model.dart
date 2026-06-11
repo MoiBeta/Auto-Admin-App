@@ -15,7 +15,7 @@ class SubTaskModel {
 
   factory SubTaskModel.fromJson(dynamic json) {
     return SubTaskModel(
-      id: json['id'] as String,
+      id: json['sourceSubTaskId'] as String,
       title: json['title'] as String,
       completed: json['completed'] as bool,
     );
@@ -23,7 +23,7 @@ class SubTaskModel {
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
+      'sourceSubTaskId': id,
       'title': title,
       'completed': completed,
     };

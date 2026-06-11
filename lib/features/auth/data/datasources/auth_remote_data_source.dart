@@ -28,11 +28,14 @@ class AuthRemoteDataSource extends AuthDataSource {
 
   @override
   Future<AuthCredentialModel?> getAuthState() async {
-    final response = await client.post(
-      '/auth/login',
-    );
-
-    return AuthCredentialModel.fromJson(response.data);
+    try {
+      final response = await client.get(
+        '/auth/me',
+      );
+      return AuthCredentialModel.fromJson(response.data);
+    } catch (e) {
+      return null;
+    }
   }
 
   @override
