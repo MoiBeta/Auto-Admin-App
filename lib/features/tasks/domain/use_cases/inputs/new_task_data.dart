@@ -25,7 +25,11 @@ class NewTaskData {
       'date': DateFormat('yyyy-MM-dd').format(startDate),
       //  'frequency': frequency.name,
       'priority': priority,
-      'subTasks': subTasks,
+      'subTasks': subTasks
+          ?.map((e) => {
+                'title': e,
+              })
+          .toList(),
     };
   }
 }
