@@ -3,9 +3,14 @@ import 'package:dio/dio.dart';
 
 class AuthInterceptor extends Interceptor {
   final TokenManager tokenManager;
+  final Dio requestDio;
   final Dio refreshDio;
 
-  AuthInterceptor(this.tokenManager, this.refreshDio);
+  AuthInterceptor({
+    required this.tokenManager,
+    required this.requestDio,
+    required this.refreshDio,
+  });
 
   @override
   void onRequest(
@@ -26,12 +31,11 @@ class AuthInterceptor extends Interceptor {
         try {
           final response = await refreshDio.post(
             '/auth/refresh',
-            data: {'refreshToken': refreshToken},
           );
 
           if (response.statusCode == 200 || response.statusCode == 201) {
-            final newAccessToken = response.data['accessToken'];
-            final newRefreshToken = response.data['refreshToken'];
+            final newAccessToken = response.data['tokens']['accessToken'];
+            final newRefreshToken = response.data['tokens']['refreshToken'];
 
             await tokenManager.saveTokens(
               accessToken: newAccessToken,
@@ -41,7 +45,7 @@ class AuthInterceptor extends Interceptor {
             final requestOptions = err.requestOptions;
             requestOptions.headers['Authorization'] = 'Bearer $newAccessToken';
 
-            final responseRetry = await refreshDio.request(
+            final responseRetry = await requestDio.request(
               requestOptions.path,
               options: Options(
                 method: requestOptions.method,
@@ -52,9 +56,11 @@ class AuthInterceptor extends Interceptor {
             );
 
             return handler.resolve(responseRetry);
+          } else {
+            await tokenManager.deleteTokens();
           }
         } catch (e) {
-          await tokenManager.deleteTokens();
+          //
         }
       }
     }

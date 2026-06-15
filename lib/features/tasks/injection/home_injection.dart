@@ -31,7 +31,8 @@ final habitsDioProvider = Provider<Dio>((ref) {
   final dio = Dio(BaseOptions(baseUrl: baseUrl));
   final tokenManager = ref.watch(tokenManagerProvider);
   final refreshDio = ref.watch(refreshDioProvider);
-  dio.interceptors.add(AuthInterceptor(tokenManager, refreshDio));
+  dio.interceptors.add(AuthInterceptor(
+      tokenManager: tokenManager, refreshDio: refreshDio, requestDio: dio));
   return dio;
 });
 

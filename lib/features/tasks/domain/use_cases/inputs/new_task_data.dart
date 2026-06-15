@@ -1,4 +1,5 @@
 import 'package:auto_admin_app/features/tasks/data/enums/task_frequency.dart';
+import 'package:intl/intl.dart';
 
 class NewTaskData {
   String title;
@@ -21,8 +22,8 @@ class NewTaskData {
     return {
       'name': title,
       'description': description,
-      'date': startDate.toIso8601String(),
-      'frequency': frequency.name,
+      'date': DateFormat('yyyy-MM-dd').format(startDate),
+      //  'frequency': frequency.name,
       'priority': priority,
       'subTasks': subTasks,
     };
