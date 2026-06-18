@@ -18,4 +18,19 @@ class UpdateTaskData {
     this.description,
     this.subTasks,
   });
+
+  toJson() {
+    return {
+      'name': title,
+      'description': description,
+      //'date': DateFormat('yyyy-MM-dd').format(startDate),
+      //'frequency': frequency.name,
+      if (priority != null) 'priority': priority,
+      'subTasks': subTasks
+          ?.map((e) => {
+                'title': e,
+              })
+          .toList(),
+    };
+  }
 }

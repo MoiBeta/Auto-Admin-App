@@ -8,6 +8,7 @@ import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/new_task_d
 import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/toggle_sub_task_data.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/toggle_task_data.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/update_task_data.dart';
+import 'package:dio/dio.dart';
 import 'package:intl/intl.dart';
 
 class HabitsRemoteDataSource implements TasksDataSource {
@@ -26,18 +27,24 @@ class HabitsRemoteDataSource implements TasksDataSource {
 
   @override
   Future<void> deleteTask(DeleteTaskData deleteTaskData) async {
-    await client.post(
+    await client.delete(
       '/habits/${deleteTaskData.taskId}',
     );
   }
 
   @override
   Future<TaskModel> editTask(UpdateTaskData updateTaskData) async {
-    final response = await client.post(
-      '/habits/${updateTaskData.taskId}',
-    );
+    Response? response;
+    try {
+      response = await client.patch(
+        '/habits/${updateTaskData.taskId}',
+        data: updateTaskData.toJson(),
+      );
+    } on DioException catch (e) {
+      log('DioException: ${e.response?.data} ${e.message} trace: ${e.stackTrace}');
+    }
 
-    return TaskModel.fromJson(response.data);
+    return TaskModel.fromJson(response!.data);
   }
 
   @override
