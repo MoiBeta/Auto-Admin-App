@@ -1,5 +1,6 @@
 import 'package:auto_admin_app/core/network/dio_client.dart';
 import 'package:auto_admin_app/core/network/interceptors/auth_interceptor.dart';
+import 'package:auto_admin_app/core/network/interceptors/error_interceptor.dart';
 import 'package:auto_admin_app/core/network/interceptors/refresh_interceptor.dart';
 import 'package:auto_admin_app/features/auth/data/datasources/auth_data_source.dart';
 import 'package:auto_admin_app/features/auth/data/datasources/auth_remote_data_source.dart';
@@ -35,13 +36,14 @@ final authDioProvider = Provider<Dio>((ref) {
   final tokenManager = ref.watch(tokenManagerProvider);
   final refreshDio = ref.watch(refreshDioProvider);
 
-  dio.interceptors.add(
+  dio.interceptors.addAll([
     AuthInterceptor(
       tokenManager: tokenManager,
       refreshDio: refreshDio,
       requestDio: dio,
     ),
-  );
+    ErrorInterceptor(),
+  ]);
   return dio;
 });
 

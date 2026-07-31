@@ -1,3 +1,4 @@
+import 'package:auto_admin_app/core/errors/error_handler.dart';
 import 'package:auto_admin_app/features/auth/domain/entity/auth_credential.dart';
 import 'package:auto_admin_app/features/auth/domain/usecases/auth_login.dart';
 import 'package:auto_admin_app/features/auth/domain/usecases/auth_logout.dart';
@@ -47,16 +48,23 @@ class AuthNotifier extends AsyncNotifier<LoginState> {
         isLoading: true,
       ),
     );
-    AuthCredential? authCredential = await _authLogin(LoginData(
-      email: emailController.text,
-      password: passwordController.text,
-    ));
-    state = AsyncData(
-      state.value!.copyWith(
-        isLoading: false,
-        credentials: authCredential,
-      ),
-    );
+    try {
+      AuthCredential? authCredential = await _authLogin(LoginData(
+        email: emailController.text,
+        password: passwordController.text,
+      ));
+      state = AsyncData(
+        state.value!.copyWith(
+          isLoading: false,
+          credentials: authCredential,
+        ),
+      );
+    } catch (e, st) {
+      ref.read(errorHandlerProvider).handle(e, st);
+      state = AsyncData(
+        state.value!.copyWith(isLoading: false),
+      );
+    }
   }
 
   Future<void> register({
@@ -69,15 +77,22 @@ class AuthNotifier extends AsyncNotifier<LoginState> {
         isLoading: true,
       ),
     );
-    AuthCredential? authCredential = await _authRegister.call(
-      SignUpData(email: email, password: password, fullName: fullName),
-    );
-    state = AsyncData(
-      state.value!.copyWith(
-        isLoading: false,
-        credentials: authCredential,
-      ),
-    );
+    try {
+      AuthCredential? authCredential = await _authRegister.call(
+        SignUpData(email: email, password: password, fullName: fullName),
+      );
+      state = AsyncData(
+        state.value!.copyWith(
+          isLoading: false,
+          credentials: authCredential,
+        ),
+      );
+    } catch (e, st) {
+      ref.read(errorHandlerProvider).handle(e, st);
+      state = AsyncData(
+        state.value!.copyWith(isLoading: false),
+      );
+    }
   }
 
   Future<void> confirmEmail() async {
@@ -119,15 +134,23 @@ class AuthNotifier extends AsyncNotifier<LoginState> {
         isLoading: true,
       ),
     );
-    bool success = await _changePassword(
-      ChangePasswordData(oldPassword: oldPassword, newPassword: newPassword),
-    );
-    state = AsyncData(
-      state.value!.copyWith(
-        isLoading: false,
-      ),
-    );
-    return success;
+    try {
+      bool success = await _changePassword(
+        ChangePasswordData(oldPassword: oldPassword, newPassword: newPassword),
+      );
+      state = AsyncData(
+        state.value!.copyWith(
+          isLoading: false,
+        ),
+      );
+      return success;
+    } catch (e, st) {
+      ref.read(errorHandlerProvider).handle(e, st);
+      state = AsyncData(
+        state.value!.copyWith(isLoading: false),
+      );
+      return false;
+    }
   }
 }
 

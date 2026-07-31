@@ -1,5 +1,6 @@
 import 'dart:developer';
 
+import 'package:auto_admin_app/core/errors/error_handler.dart';
 import 'package:auto_admin_app/features/tasks/data/enums/task_frequency.dart';
 import 'package:auto_admin_app/features/tasks/domain/entities/sub_task.dart';
 import 'package:auto_admin_app/features/tasks/domain/entities/task.dart';
@@ -52,6 +53,7 @@ class HomeNotifier extends _$HomeNotifier {
       final tasks = await getTasks(date);
       state = AsyncData(tasks);
     } catch (e, st) {
+      ref.read(errorHandlerProvider).handle(e, st);
       state = AsyncError(e, st);
     }
   }
@@ -67,20 +69,25 @@ class HomeNotifier extends _$HomeNotifier {
     List<Task> tasks = List<Task>.from(state.value ?? []);
     final int newPriority = tasks.isEmpty ? 100 : tasks.last.priority + 100;
 
-    Task newTask = await _createNewTask.call(
-      NewTaskData(
-        title: title,
-        startDate: startDate,
-        frequency: frequency,
-        priority: newPriority,
-        subTasks: subtasks,
-      ),
-    );
-    tasks.add(newTask);
-    state = AsyncData(tasks);
-    if (reminderDate != null) {
-      newTask.reminderDate = reminderDate;
-      await scheduleTaskNotification.call(newTask);
+    try {
+      Task newTask = await _createNewTask.call(
+        NewTaskData(
+          title: title,
+          startDate: startDate,
+          frequency: frequency,
+          priority: newPriority,
+          subTasks: subtasks,
+        ),
+      );
+      tasks.add(newTask);
+      state = AsyncData(tasks);
+      if (reminderDate != null) {
+        newTask.reminderDate = reminderDate;
+        await scheduleTaskNotification.call(newTask);
+      }
+    } catch (e, st) {
+      ref.read(errorHandlerProvider).handle(e, st);
+      state = AsyncData(tasks);
     }
   }
 
@@ -93,24 +100,30 @@ class HomeNotifier extends _$HomeNotifier {
     List<String>? subtasks,
   }) async {
     state = const AsyncLoading();
-    Task updatedTask = await _updateTask.call(
-      UpdateTaskData(
-        taskId: taskId,
-        title: title,
-        startDate: startDate,
-        frequency: frequency,
-        subTasks: subtasks,
-      ),
-    );
-    List<Task> tasks = List<Task>.from(state.value ?? []);
-    int index = tasks.indexWhere((task) => task.id == taskId);
-    tasks[index] = updatedTask;
-    state = AsyncData(tasks);
-    if (reminderDate != null) {
-      updatedTask.copyWith(
-        reminderDate: reminderDate,
+    try {
+      Task updatedTask = await _updateTask.call(
+        UpdateTaskData(
+          taskId: taskId,
+          title: title,
+          startDate: startDate,
+          frequency: frequency,
+          subTasks: subtasks,
+        ),
       );
-      await scheduleTaskNotification.call(updatedTask);
+      List<Task> tasks = List<Task>.from(state.value ?? []);
+      int index = tasks.indexWhere((task) => task.id == taskId);
+      tasks[index] = updatedTask;
+      state = AsyncData(tasks);
+      if (reminderDate != null) {
+        updatedTask.copyWith(
+          reminderDate: reminderDate,
+        );
+        await scheduleTaskNotification.call(updatedTask);
+      }
+    } catch (e, st) {
+      ref.read(errorHandlerProvider).handle(e, st);
+      // Restore previous state
+      state = AsyncData(state.value ?? []);
     }
   }
 
@@ -119,17 +132,23 @@ class HomeNotifier extends _$HomeNotifier {
     required DeleteScope scope,
     DateTime? referenceDate,
   }) async {
-    await _deleteTask.call(
-      DeleteTaskData(
-        taskId: taskId,
-        scope: scope,
-        referenceDate: referenceDate,
-      ),
-    );
-    List<Task> tasks = List<Task>.from(state.value ?? []);
-    tasks.removeWhere((task) => task.id == taskId);
-    state = AsyncData(tasks);
-    await cancelTaskNotification(taskId);
+    final previousTasks = List<Task>.from(state.value ?? []);
+    try {
+      await _deleteTask.call(
+        DeleteTaskData(
+          taskId: taskId,
+          scope: scope,
+          referenceDate: referenceDate,
+        ),
+      );
+      List<Task> tasks = List<Task>.from(state.value ?? []);
+      tasks.removeWhere((task) => task.id == taskId);
+      state = AsyncData(tasks);
+      await cancelTaskNotification(taskId);
+    } catch (e, st) {
+      ref.read(errorHandlerProvider).handle(e, st);
+      state = AsyncData(previousTasks);
+    }
   }
 
   void listenDateChanges() {
@@ -146,20 +165,27 @@ class HomeNotifier extends _$HomeNotifier {
     int index = tasks.indexWhere((currentTask) => currentTask.id == task.id);
     tasks[index] = task.copyWith(completed: !task.completed);
     state = AsyncData(tasks);
-    Task updatedTask = await _toggleTask.call(
-      ToggleTaskData(
-        taskId: task.id,
-        completedAt: date,
-      ),
-    );
-    if (updatedTask.completed != tasks[index].completed) {
-      tasks[index] = task.copyWith(completed: updatedTask.completed);
+    try {
+      Task updatedTask = await _toggleTask.call(
+        ToggleTaskData(
+          taskId: task.id,
+          completedAt: date,
+        ),
+      );
+      if (updatedTask.completed != tasks[index].completed) {
+        tasks[index] = task.copyWith(completed: updatedTask.completed);
+        state = AsyncData(tasks);
+      }
+      if (updatedTask.completed) {
+        await cancelTaskNotification(task.id);
+      } else {
+        await scheduleTaskNotification.call(task);
+      }
+    } catch (e, st) {
+      // Revert optimistic update
+      tasks[index] = task;
       state = AsyncData(tasks);
-    }
-    if (updatedTask.completed) {
-      await cancelTaskNotification(task.id);
-    } else {
-      await scheduleTaskNotification.call(task);
+      ref.read(errorHandlerProvider).handle(e, st);
     }
   }
 
@@ -177,34 +203,38 @@ class HomeNotifier extends _$HomeNotifier {
       {required Task task,
       required Subtask subtask,
       required DateTime date}) async {
-    final updatedSubtasks = task.subtasks!.map((s) {
-      if (s.id == subtask.id) {
-        return s.copyWith(completed: !s.completed);
+    try {
+      final updatedSubtasks = task.subtasks!.map((s) {
+        if (s.id == subtask.id) {
+          return s.copyWith(completed: !s.completed);
+        }
+        return s;
+      }).toList();
+
+      final allCompleted = updatedSubtasks.every((s) => s.completed);
+
+      final updatedTask = await _toggleSubtask.call(
+        ToggleSubTaskData(
+          taskId: task.id,
+          subTaskId: subtask.id,
+          completedAt: date,
+        ),
+      );
+
+      final tasks = List<Task>.from(state.value ?? []);
+      final index = tasks.indexWhere((t) => t.id == task.id);
+      if (index != -1) {
+        tasks[index] = updatedTask;
+        state = AsyncData(tasks);
       }
-      return s;
-    }).toList();
 
-    final allCompleted = updatedSubtasks.every((s) => s.completed);
-
-    final updatedTask = await _toggleSubtask.call(
-      ToggleSubTaskData(
-        taskId: task.id,
-        subTaskId: subtask.id,
-        completedAt: date,
-      ),
-    );
-
-    final tasks = List<Task>.from(state.value ?? []);
-    final index = tasks.indexWhere((t) => t.id == task.id);
-    if (index != -1) {
-      tasks[index] = updatedTask;
-      state = AsyncData(tasks);
-    }
-
-    if (allCompleted) {
-      await cancelTaskNotification(task.id);
-    } else {
-      await scheduleTaskNotification.call(task);
+      if (allCompleted) {
+        await cancelTaskNotification(task.id);
+      } else {
+        await scheduleTaskNotification.call(task);
+      }
+    } catch (e, st) {
+      ref.read(errorHandlerProvider).handle(e, st);
     }
   }
 
@@ -254,6 +284,7 @@ class HomeNotifier extends _$HomeNotifier {
       );
     } catch (e, st) {
       log('Exception: $e stacktrace: $st');
+      ref.read(errorHandlerProvider).handle(e, st);
       state = AsyncData(previousTasks);
     }
   }

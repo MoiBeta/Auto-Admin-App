@@ -1,5 +1,6 @@
 import 'package:auto_admin_app/core/network/dio_client.dart';
 import 'package:auto_admin_app/core/network/interceptors/auth_interceptor.dart';
+import 'package:auto_admin_app/core/network/interceptors/error_interceptor.dart';
 import 'package:auto_admin_app/features/auth/injection/auth_providers.dart';
 import 'package:auto_admin_app/features/tasks/data/datasources/data_source.dart';
 import 'package:auto_admin_app/features/tasks/data/datasources/habits_remote_data_source.dart';
@@ -31,8 +32,11 @@ final habitsDioProvider = Provider<Dio>((ref) {
   final dio = Dio(BaseOptions(baseUrl: baseUrl));
   final tokenManager = ref.watch(tokenManagerProvider);
   final refreshDio = ref.watch(refreshDioProvider);
-  dio.interceptors.add(AuthInterceptor(
-      tokenManager: tokenManager, refreshDio: refreshDio, requestDio: dio));
+  dio.interceptors.addAll([
+    AuthInterceptor(
+        tokenManager: tokenManager, refreshDio: refreshDio, requestDio: dio),
+    ErrorInterceptor(),
+  ]);
   return dio;
 });
 

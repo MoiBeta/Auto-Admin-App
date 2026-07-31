@@ -1,6 +1,7 @@
 import 'package:auto_admin_app/firebase_options.dart';
 import 'package:auto_admin_app/global/router/router.dart';
 import 'package:auto_admin_app/global/theme/app_theme.dart';
+import 'package:auto_admin_app/global/widgets/error_listener.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -42,23 +43,25 @@ class MyApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
-    return MaterialApp.router(
-      locale: const Locale('es'),
-      supportedLocales: const [
-        Locale('es'),
-        Locale('en'),
-      ],
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      debugShowCheckedModeBanner: false,
-      routerDelegate: router.routerDelegate,
-      routeInformationParser: router.routeInformationParser,
-      routeInformationProvider: router.routeInformationProvider,
-      theme: AppTheme.lightTheme,
-      themeMode: ThemeMode.light, // TODO: Apply change theme options logic
+    return ErrorListener(
+      child: MaterialApp.router(
+        locale: const Locale('es'),
+        supportedLocales: const [
+          Locale('es'),
+          Locale('en'),
+        ],
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        debugShowCheckedModeBanner: false,
+        routerDelegate: router.routerDelegate,
+        routeInformationParser: router.routeInformationParser,
+        routeInformationProvider: router.routeInformationProvider,
+        theme: AppTheme.lightTheme,
+        themeMode: ThemeMode.light, // TODO: Apply change theme options logic
+      ),
     );
   }
 }
