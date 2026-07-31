@@ -5,7 +5,6 @@ import 'package:auto_admin_app/features/tasks/data/datasources/data_source.dart'
 import 'package:auto_admin_app/features/tasks/data/models/task_model.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/delete_task_data.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/new_task_data.dart';
-import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/toggle_sub_task_data.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/toggle_task_data.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/update_task_data.dart';
 import 'package:dio/dio.dart';
@@ -61,9 +60,16 @@ class HabitsRemoteDataSource implements TasksDataSource {
   }
 
   @override
-  Future<TaskModel> toggleSubTask(ToggleSubTaskData data) async {
+  Future<TaskModel> syncSubtasks({
+    required String taskId,
+    required List<SubtaskState> subtasks,
+    required DateTime date,
+  }) async {
     final response = await client.post(
-      '/habits/${data.taskId}/subtasks/${data.subTaskId}/toggle?date=${DateFormat('yyyy-MM-dd').format(data.completedAt)}',
+      '/habits/$taskId/subtasks/sync?date=${DateFormat('yyyy-MM-dd').format(date)}',
+      data: {
+        'subtasks': subtasks.map((s) => s.toJson()).toList(),
+      },
     );
     return TaskModel.fromJson(response.data);
   }

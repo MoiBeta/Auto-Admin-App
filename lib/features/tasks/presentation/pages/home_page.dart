@@ -97,7 +97,7 @@ class HomePage extends ConsumerWidget {
                 padding: const EdgeInsets.all(8.0),
                 child: tasksList.when(
                   data: (data) => ReorderableListView(
-                    onReorder: (int oldIndex, int newIndex) async {
+                    onReorderItem: (int oldIndex, int newIndex) async {
                       ref.read(homeProvider.notifier).updateTaskPriorities(
                           oldIndex: oldIndex, newIndex: newIndex);
                     },

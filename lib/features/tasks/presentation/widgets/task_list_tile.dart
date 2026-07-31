@@ -23,17 +23,10 @@ class _TaskListTileState extends ConsumerState<TaskListTile> {
   bool _expanded = false;
 
   void _toggleSubtaskCompletion(Subtask subtask) {
-    final notifier = ref.read(homeProvider.notifier);
-    notifier.toggleSubtask(
+    ref.read(homeProvider.notifier).toggleSubtask(
         task: widget.task,
         subtask: subtask,
         date: ref.read(selectedDateProvider));
-    final allCompleted =
-        widget.task.subtasks?.every((s) => s.completed) ?? false;
-    if (allCompleted && !widget.task.completed) {
-      notifier.toggleTask(
-          task: widget.task, date: ref.read(selectedDateProvider));
-    }
   }
 
   @override

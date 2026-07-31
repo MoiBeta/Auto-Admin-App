@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:developer';
 
 import 'package:auto_admin_app/core/errors/error_handler.dart';
+import 'package:auto_admin_app/features/tasks/data/datasources/data_source.dart';
 import 'package:auto_admin_app/features/tasks/data/enums/task_frequency.dart';
 import 'package:auto_admin_app/features/tasks/domain/entities/sub_task.dart';
 import 'package:auto_admin_app/features/tasks/domain/entities/task.dart';
@@ -11,11 +13,9 @@ import 'package:auto_admin_app/features/tasks/domain/use_cases/delete_task.dart'
 import 'package:auto_admin_app/features/tasks/domain/use_cases/get_all_tasks.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/delete_task_data.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/new_task_data.dart';
-import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/toggle_sub_task_data.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/toggle_task_data.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/update_task_data.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/schedule_task_notification.dart';
-import 'package:auto_admin_app/features/tasks/domain/use_cases/toggle_sub_task.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/toggle_task.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/update_task_template.dart';
 import 'package:auto_admin_app/features/tasks/injection/home_injection.dart';
@@ -31,11 +31,19 @@ class HomeNotifier extends _$HomeNotifier {
   late final GetAllTasks _getAllTasks = ref.read(getAllTasksProvider);
   late final UpdateTask _updateTask = ref.read(updateTaskProvider);
   late final ToggleTask _toggleTask = ref.read(toggleTaskProvider);
-  late final ToggleSubTask _toggleSubtask = ref.read(toggleSubTaskProvider);
   late final ScheduleTaskNotification scheduleTaskNotification =
       ref.read(scheduleTaskNotificationProvider);
   late final CancelTaskNotification cancelTaskNotification =
       ref.read(cancelTaskNotificationProvider);
+
+  /// Debounce timer for subtask syncing. Resets on every subtask toggle.
+  Timer? _subtaskSyncTimer;
+
+  /// Task ID that has pending subtask changes.
+  String? _pendingSyncTaskId;
+
+  /// The original task before any optimistic changes (for revert on error).
+  Task? _pendingSyncOriginalTask;
 
   @override
   Future<List<Task>> build() async {
@@ -203,37 +211,91 @@ class HomeNotifier extends _$HomeNotifier {
       {required Task task,
       required Subtask subtask,
       required DateTime date}) async {
+    // 1. Optimistic update: toggle the subtask immediately in UI
+    final tasks = List<Task>.from(state.value ?? []);
+    final taskIndex = tasks.indexWhere((t) => t.id == task.id);
+    if (taskIndex == -1) return;
+
+    final currentTask = tasks[taskIndex];
+    final optimisticSubtasks = currentTask.subtasks!.map((s) {
+      if (s.id == subtask.id) {
+        return s.copyWith(completed: !s.completed);
+      }
+      return s;
+    }).toList();
+
+    final allCompleted = optimisticSubtasks.every((s) => s.completed);
+    final optimisticTask = currentTask.copyWith(
+      subtasks: optimisticSubtasks,
+      completed: allCompleted,
+    );
+
+    tasks[taskIndex] = optimisticTask;
+    state = AsyncData(tasks);
+
+    // 2. Store original task for revert (only first time per debounce window)
+    if (_pendingSyncTaskId != task.id) {
+      _pendingSyncOriginalTask = task;
+    }
+    _pendingSyncTaskId = task.id;
+
+    // 3. Reset the debounce timer — send the full list after user stops
+    _subtaskSyncTimer?.cancel();
+    _subtaskSyncTimer = Timer(
+      const Duration(milliseconds: 600),
+      () => _syncSubtasksToBackend(task.id, date),
+    );
+  }
+
+  Future<void> _syncSubtasksToBackend(String taskId, DateTime date) async {
+    final originalTask = _pendingSyncOriginalTask;
+    _pendingSyncTaskId = null;
+    _pendingSyncOriginalTask = null;
+
+    // Get the current optimistic state of the task's subtasks
+    final tasks = List<Task>.from(state.value ?? []);
+    final taskIndex = tasks.indexWhere((t) => t.id == taskId);
+    if (taskIndex == -1) return;
+
+    final currentTask = tasks[taskIndex];
+    final subtaskStates = currentTask.subtasks!
+        .map((s) => SubtaskState(
+              sourceSubTaskId: s.id,
+              completed: s.completed,
+            ))
+        .toList();
+
     try {
-      final updatedSubtasks = task.subtasks!.map((s) {
-        if (s.id == subtask.id) {
-          return s.copyWith(completed: !s.completed);
-        }
-        return s;
-      }).toList();
+      final updatedTask = await ref.read(taskRepositoryProvider).syncSubtasks(
+            taskId: taskId,
+            subtasks: subtaskStates,
+            date: date,
+          );
 
-      final allCompleted = updatedSubtasks.every((s) => s.completed);
-
-      final updatedTask = await _toggleSubtask.call(
-        ToggleSubTaskData(
-          taskId: task.id,
-          subTaskId: subtask.id,
-          completedAt: date,
-        ),
-      );
-
-      final tasks = List<Task>.from(state.value ?? []);
-      final index = tasks.indexWhere((t) => t.id == task.id);
-      if (index != -1) {
-        tasks[index] = updatedTask;
-        state = AsyncData(tasks);
+      // Reconcile with backend truth
+      final currentTasks = List<Task>.from(state.value ?? []);
+      final currentIndex = currentTasks.indexWhere((t) => t.id == taskId);
+      if (currentIndex != -1) {
+        currentTasks[currentIndex] = updatedTask;
+        state = AsyncData(currentTasks);
       }
 
-      if (allCompleted) {
-        await cancelTaskNotification(task.id);
+      // Handle notifications
+      if (updatedTask.completed) {
+        await cancelTaskNotification(taskId);
       } else {
-        await scheduleTaskNotification.call(task);
+        await scheduleTaskNotification.call(updatedTask);
       }
     } catch (e, st) {
+      // Revert to original task state on failure
+      if (originalTask != null) {
+        final revertTasks = List<Task>.from(state.value ?? []);
+        final revertIndex = revertTasks.indexWhere((t) => t.id == taskId);
+        if (revertIndex != -1) {
+          revertTasks[revertIndex] = originalTask;
+          state = AsyncData(revertTasks);
+        }
+      }
       ref.read(errorHandlerProvider).handle(e, st);
     }
   }

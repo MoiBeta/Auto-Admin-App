@@ -4,7 +4,6 @@ import 'package:auto_admin_app/features/tasks/domain/entities/task.dart';
 import 'package:auto_admin_app/features/tasks/domain/repository/tasks_repository.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/delete_task_data.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/new_task_data.dart';
-import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/toggle_sub_task_data.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/toggle_task_data.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/update_task_data.dart';
 
@@ -45,9 +44,13 @@ class TaskRepositoryImpl extends TasksRepository {
   }
 
   @override
-  Future<Task> toggleSubTask(ToggleSubTaskData data) {
-    return tasksDataSource.toggleSubTask(data).then((taskModel) {
-      return taskModel.toEntity();
-    });
+  Future<Task> syncSubtasks({
+    required String taskId,
+    required List<SubtaskState> subtasks,
+    required DateTime date,
+  }) {
+    return tasksDataSource
+        .syncSubtasks(taskId: taskId, subtasks: subtasks, date: date)
+        .then((taskModel) => taskModel.toEntity());
   }
 }

@@ -15,7 +15,6 @@ import 'package:auto_admin_app/features/tasks/domain/use_cases/create_new_task.d
 import 'package:auto_admin_app/features/tasks/domain/use_cases/delete_task.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/get_all_tasks.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/schedule_task_notification.dart';
-import 'package:auto_admin_app/features/tasks/domain/use_cases/toggle_sub_task.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/toggle_task.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/update_task_template.dart';
 import 'package:auto_admin_app/global/di/global_providers.dart';
@@ -83,9 +82,6 @@ Provider<UpdateTask> updateTaskProvider = Provider<UpdateTask>(
 
 Provider<ToggleTask> toggleTaskProvider = Provider<ToggleTask>(
     (ref) => ToggleTask(ref.watch(taskRepositoryProvider)));
-
-Provider<ToggleSubTask> toggleSubTaskProvider = Provider<ToggleSubTask>(
-    (ref) => ToggleSubTask(ref.watch(taskRepositoryProvider)));
 
 Provider<ScheduleTaskNotification> scheduleTaskNotificationProvider =
     Provider<ScheduleTaskNotification>((ref) =>
