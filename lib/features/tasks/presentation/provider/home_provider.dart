@@ -242,7 +242,7 @@ class HomeNotifier extends _$HomeNotifier {
     // 3. Reset the debounce timer — send the full list after user stops
     _subtaskSyncTimer?.cancel();
     _subtaskSyncTimer = Timer(
-      const Duration(milliseconds: 600),
+      const Duration(seconds: 1),
       () => _syncSubtasksToBackend(task.id, date),
     );
   }
