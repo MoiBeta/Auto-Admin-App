@@ -23,7 +23,7 @@ class NewTaskData {
       'name': title,
       'description': description,
       'date': DateFormat('yyyy-MM-dd').format(startDate),
-      //  'frequency': frequency.name,
+      'frequency': frequency.name.toUpperCase(),
       'priority': priority,
       'subTasks': subTasks
           ?.map((e) => {

@@ -23,14 +23,14 @@ class UpdateTaskData {
     return {
       'name': title,
       'description': description,
-      //'date': DateFormat('yyyy-MM-dd').format(startDate),
-      //'frequency': frequency.name,
+      'frequency': frequency.name.toUpperCase(),
       if (priority != null) 'priority': priority,
-      'subTasks': subTasks
-          ?.map((e) => {
-                'title': e,
-              })
-          .toList(),
+      if (subTasks != null && subTasks!.isNotEmpty)
+        'subTasks': subTasks
+            ?.map((e) => {
+                  'title': e,
+                })
+            .toList(),
     };
   }
 }
