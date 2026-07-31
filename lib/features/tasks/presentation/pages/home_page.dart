@@ -101,6 +101,9 @@ class HomePage extends ConsumerWidget {
                       ref.read(homeProvider.notifier).updateTaskPriorities(
                           oldIndex: oldIndex, newIndex: newIndex);
                     },
+                    footer: SizedBox(
+                      height: 75,
+                    ),
                     children: [
                       ...data.asMap().entries.map(
                             (entry) => TaskListTile(
