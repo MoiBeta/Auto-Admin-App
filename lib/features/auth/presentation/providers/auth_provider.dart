@@ -120,7 +120,7 @@ class AuthNotifier extends AsyncNotifier<LoginState> {
     await _authLogout();
     state = AsyncData(
       state.value!.copyWith(
-        credentials: null,
+        clearCredentials: true,
       ),
     );
   }
@@ -172,11 +172,12 @@ class LoginState {
     bool? hasError,
     String? errorMessage,
     AuthCredential? credentials,
+    bool clearCredentials = false,
   }) {
     return LoginState(
       isLoading: isLoading ?? this.isLoading,
       hasError: hasError ?? this.hasError,
-      credentials: credentials ?? this.credentials,
+      credentials: clearCredentials ? null : (credentials ?? this.credentials),
       errorMessage: errorMessage ?? this.errorMessage,
     );
   }

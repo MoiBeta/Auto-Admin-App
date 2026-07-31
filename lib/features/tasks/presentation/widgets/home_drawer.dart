@@ -1,8 +1,9 @@
 import 'package:auto_admin_app/core/constants/routes.dart';
 import 'package:auto_admin_app/features/auth/injection/auth_providers.dart';
+import 'package:auto_admin_app/features/tasks/presentation/provider/home_provider.dart';
+import 'package:auto_admin_app/global/router/router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 class HomeDrawer extends ConsumerWidget {
   const HomeDrawer({super.key});
@@ -30,10 +31,10 @@ class HomeDrawer extends ConsumerWidget {
                   ],
                 ),
                 onTap: () async {
+                  Navigator.of(context).pop(); // Close drawer
                   await ref.read(authNotifierProvider.notifier).logout();
-                  if (context.mounted) {
-                    context.pushReplacementNamed(Routes.auth);
-                  }
+                  ref.invalidate(homeProvider); // Clear cached tasks
+                  ref.read(routerProvider).go(Routes.auth);
                 },
               ),
             ],
