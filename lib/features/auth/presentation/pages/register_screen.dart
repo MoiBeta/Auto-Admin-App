@@ -1,5 +1,6 @@
 import 'package:auto_admin_app/core/constants/routes.dart';
 import 'package:auto_admin_app/features/auth/injection/auth_providers.dart';
+import 'package:auto_admin_app/global/widgets/loading_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
@@ -10,56 +11,64 @@ class RegisterScreen extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final TextEditingController fullNameController = useTextEditingController();
-    final TextEditingController emailController = useTextEditingController();
-    final TextEditingController passwordController = useTextEditingController();
+    final fullNameController = useTextEditingController();
+    final emailController = useTextEditingController();
+    final passwordController = useTextEditingController();
+
+    final loginState = ref.watch(authNotifierProvider).value;
+    final isLoading = loginState?.isLoading ?? false;
+
+    ref.listen(authNotifierProvider, (previous, next) {
+      final credentials = next.value?.credentials;
+      if (credentials != null && context.mounted) {
+        context.go(Routes.home);
+      }
+    });
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('Registro'),
+        title: const Text('Registro'),
       ),
       body: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 20,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             TextFormField(
               controller: fullNameController,
-              decoration: InputDecoration(
-                hintText: 'Nombre Completo',
-              ),
+              decoration: const InputDecoration(hintText: 'Nombre Completo'),
+              textCapitalization: TextCapitalization.words,
             ),
+            const SizedBox(height: 10),
             TextFormField(
               controller: emailController,
-              decoration: InputDecoration(
-                hintText: 'Correo',
-              ),
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(hintText: 'Correo'),
             ),
+            const SizedBox(height: 10),
             TextFormField(
               controller: passwordController,
-              decoration: InputDecoration(
-                hintText: 'Contraseña',
-              ),
+              obscureText: true,
+              decoration: const InputDecoration(hintText: 'Contraseña'),
             ),
-            FilledButton(
+            const SizedBox(height: 16),
+            LoadingButton(
+              isLoading: isLoading,
               onPressed: () async {
                 await ref.read(authNotifierProvider.notifier).register(
                       email: emailController.text,
                       password: passwordController.text,
                       fullName: fullNameController.text,
                     );
-                if (context.mounted) {
-                  context.pushReplacementNamed(Routes.home);
-                }
               },
-              child: Text('Registrarse'),
+              label: 'Registrarse',
             ),
+            const SizedBox(height: 8),
             FilledButton(
-              onPressed: () async {
-                context.pushReplacementNamed(Routes.login);
-              },
-              child: Text('Volver'),
+              onPressed: isLoading
+                  ? null
+                  : () => context.pushReplacementNamed(Routes.login),
+              child: const Text('Volver'),
             ),
           ],
         ),

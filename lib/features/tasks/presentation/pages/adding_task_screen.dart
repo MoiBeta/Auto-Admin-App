@@ -1,6 +1,7 @@
 import 'package:auto_admin_app/features/tasks/data/enums/task_frequency.dart';
 import 'package:auto_admin_app/features/tasks/domain/entities/task.dart';
 import 'package:auto_admin_app/features/tasks/presentation/provider/home_provider.dart';
+import 'package:auto_admin_app/global/widgets/loading_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
@@ -223,11 +224,10 @@ class AddingTaskScreen extends HookConsumerWidget {
                 ),
               const SizedBox(height: 20),
 
-              ElevatedButton(
-                onPressed: isLoading ? null : onSave,
-                child: isLoading
-                    ? const CircularProgressIndicator()
-                    : Text(task == null ? 'Agregar' : 'Editar'),
+              LoadingButton(
+                isLoading: isLoading,
+                onPressed: onSave,
+                label: task == null ? 'Agregar' : 'Editar',
               ),
             ],
           ),

@@ -4,8 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// Global error state that can be pushed from anywhere in the app.
 /// Listeners (like the ErrorListener widget) react to changes and display
 /// notifications to the user.
-class GlobalErrorNotifier extends StateNotifier<AppError?> {
-  GlobalErrorNotifier() : super(null);
+class GlobalErrorNotifier extends Notifier<AppError?> {
+  @override
+  AppError? build() => null;
 
   /// Push an error to be displayed globally.
   void reportError(AppError error) {
@@ -16,6 +17,6 @@ class GlobalErrorNotifier extends StateNotifier<AppError?> {
 }
 
 final globalErrorProvider =
-    StateNotifierProvider<GlobalErrorNotifier, AppError?>(
-  (_) => GlobalErrorNotifier(),
+    NotifierProvider<GlobalErrorNotifier, AppError?>(
+  GlobalErrorNotifier.new,
 );

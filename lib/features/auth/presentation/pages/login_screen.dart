@@ -1,6 +1,6 @@
 import 'package:auto_admin_app/core/constants/routes.dart';
 import 'package:auto_admin_app/features/auth/injection/auth_providers.dart';
-import 'package:auto_admin_app/features/auth/presentation/providers/auth_provider.dart';
+import 'package:auto_admin_app/global/widgets/loading_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -11,62 +11,51 @@ class LoginScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    AuthNotifier authNotifier = ref.read(authNotifierProvider.notifier);
-    AsyncValue<LoginState>? loginState = ref.watch(authNotifierProvider);
+    final authNotifier = ref.read(authNotifierProvider.notifier);
+    final loginState = ref.watch(authNotifierProvider).value;
+    final isLoading = loginState?.isLoading ?? false;
+
+    ref.listen(authNotifierProvider, (previous, next) {
+      final credentials = next.value?.credentials;
+      if (credentials != null && context.mounted) {
+        context.go(Routes.home);
+      }
+    });
+
     return Scaffold(
       body: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 20,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
         child: ListView(
           children: [
             Container(
-              margin: EdgeInsets.only(
-                top: 50,
-                bottom: 40,
-              ),
-              child: Lottie.asset(
-                'assets/animations/task-login.json',
-              ),
+              margin: const EdgeInsets.only(top: 50, bottom: 40),
+              child: Lottie.asset('assets/animations/task-login.json'),
             ),
             TextFormField(
               controller: authNotifier.emailController,
-              decoration: InputDecoration(
-                hintText: 'Correo',
-              ),
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(hintText: 'Correo'),
             ),
-            const SizedBox(
-              height: 10,
-            ),
+            const SizedBox(height: 10),
             TextFormField(
               controller: authNotifier.passwordController,
               obscureText: true,
-              decoration: InputDecoration(
-                hintText: 'Contraseña',
-              ),
+              decoration: const InputDecoration(hintText: 'Contraseña'),
             ),
-            const SizedBox(
-              height: 10,
-            ),
-            FilledButton(
+            const SizedBox(height: 16),
+            LoadingButton(
+              isLoading: isLoading,
               onPressed: () async {
                 await ref.read(authNotifierProvider.notifier).login();
-                if (context.mounted) {
-                  context.pushReplacementNamed(Routes.home);
-                }
               },
-              child: (loginState?.isLoading ?? false)
-                  ? SizedBox(
-                      height: 20,
-                      child: CircularProgressIndicator(),
-                    )
-                  : Text('Iniciar sesión'),
+              label: 'Iniciar sesión',
             ),
+            const SizedBox(height: 8),
             FilledButton(
-              onPressed: () async {
-                context.pushReplacementNamed(Routes.register);
-              },
-              child: Text('Crear cuenta'),
+              onPressed: isLoading
+                  ? null
+                  : () => context.pushReplacementNamed(Routes.register),
+              child: const Text('Crear cuenta'),
             ),
           ],
         ),
