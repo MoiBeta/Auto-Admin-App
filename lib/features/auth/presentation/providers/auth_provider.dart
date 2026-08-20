@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:auto_admin_app/core/errors/error_handler.dart';
 import 'package:auto_admin_app/features/auth/domain/entity/auth_credential.dart';
 import 'package:auto_admin_app/features/auth/domain/usecases/auth_login.dart';
@@ -11,6 +13,7 @@ import 'package:auto_admin_app/features/auth/domain/usecases/inputs/login_data.d
 import 'package:auto_admin_app/features/auth/domain/usecases/inputs/sign_up_data.dart';
 import 'package:auto_admin_app/features/auth/domain/usecases/resend_confirmation_code.dart';
 import 'package:auto_admin_app/features/auth/injection/auth_providers.dart';
+import 'package:auto_admin_app/features/notifications/notification_providers.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -59,11 +62,29 @@ class AuthNotifier extends AsyncNotifier<LoginState> {
           credentials: authCredential,
         ),
       );
+
+      // Register FCM token after successful login (non-blocking)
+      _registerFcmToken();
     } catch (e, st) {
       ref.read(errorHandlerProvider).handle(e, st);
       state = AsyncData(
         state.value!.copyWith(isLoading: false),
       );
+    }
+  }
+
+  /// Registers the FCM device token with the backend after login.
+  /// Wrapped in try/catch to avoid blocking the login flow on failure.
+  Future<void> _registerFcmToken() async {
+    try {
+      final pushService = ref.read(pushNotificationServiceProvider);
+      final fcmToken = await pushService.getToken();
+      if (fcmToken != null) {
+        final tokenRepo = ref.read(deviceTokenRepositoryProvider);
+        await tokenRepo.registerToken(token: fcmToken, platform: 'android');
+      }
+    } catch (e) {
+      log('Failed to register FCM token: $e');
     }
   }
 

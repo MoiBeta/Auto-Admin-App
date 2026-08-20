@@ -126,38 +126,16 @@ class AddingTaskScreen extends HookConsumerWidget {
 
               GestureDetector(
                 onTap: () async {
-                  final notifier = ref.read(homeProvider.notifier);
-                  final granted = await notifier.checkNotificationPermission();
-
                   if (!context.mounted) return;
-                  if (granted) {
-                    final time = await showTimePicker(
-                      context: context,
-                      initialTime: TimeOfDay.now(),
-                    );
-                    if (time != null) {
-                      selectedTime.value = time;
-                      if (context.mounted) {
-                        reminderEditingController.text = time.format(context);
-                      }
+                  final time = await showTimePicker(
+                    context: context,
+                    initialTime: TimeOfDay.now(),
+                  );
+                  if (time != null) {
+                    selectedTime.value = time;
+                    if (context.mounted) {
+                      reminderEditingController.text = time.format(context);
                     }
-                  } else {
-                    await showDialog(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Icon(Icons.warning, size: 80),
-                        content: const Text(
-                          'Necesitamos tu permiso para mostrar notificaciones de recordatorios.',
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => context.pop(),
-                            child: const Text('Ok'),
-                          ),
-                        ],
-                      ),
-                    );
-                    reminderEditingController.clear();
                   }
                 },
                 child: TextFormField(

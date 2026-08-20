@@ -1,3 +1,4 @@
+import 'package:auto_admin_app/features/notifications/push_notification_service.dart';
 import 'package:auto_admin_app/firebase_options.dart';
 import 'package:auto_admin_app/global/router/router.dart';
 import 'package:auto_admin_app/global/theme/app_theme.dart';
@@ -5,33 +6,23 @@ import 'package:auto_admin_app/global/widgets/error_listener.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:timezone/data/latest_all.dart' as tz;
-
-import 'features/tasks/injection/home_injection.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  tz.initializeTimeZones();
 
-  final notifications = FlutterLocalNotificationsPlugin();
-  await notifications.initialize(
-    const InitializationSettings(
-      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
-      iOS: DarwinInitializationSettings(),
-    ),
-  );
+  final pushService = PushNotificationService();
+  await pushService.requestPermission();
+  pushService.setupForegroundHandler();
+  PushNotificationService.setupBackgroundHandler();
+
   await dotenv.load();
   runApp(
     ProviderScope(
-      overrides: [
-        flutterLocalNotificationsProvider.overrideWithValue(notifications),
-      ],
       child: MyApp(),
     ),
   );

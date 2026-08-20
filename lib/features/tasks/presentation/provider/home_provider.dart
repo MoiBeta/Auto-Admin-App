@@ -7,7 +7,6 @@ import 'package:auto_admin_app/features/tasks/data/enums/task_frequency.dart';
 import 'package:auto_admin_app/features/tasks/domain/entities/sub_task.dart';
 import 'package:auto_admin_app/features/tasks/domain/entities/task.dart';
 import 'package:auto_admin_app/features/tasks/domain/enums/delete_scope.dart';
-import 'package:auto_admin_app/features/tasks/domain/use_cases/cancel_task_notification.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/create_new_task.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/delete_task.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/get_all_tasks.dart';
@@ -15,11 +14,9 @@ import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/delete_tas
 import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/new_task_data.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/toggle_task_data.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/update_task_data.dart';
-import 'package:auto_admin_app/features/tasks/domain/use_cases/schedule_task_notification.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/toggle_task.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/update_task_template.dart';
 import 'package:auto_admin_app/features/tasks/injection/home_injection.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'home_provider.g.dart';
@@ -31,10 +28,6 @@ class HomeNotifier extends _$HomeNotifier {
   late final GetAllTasks _getAllTasks = ref.read(getAllTasksProvider);
   late final UpdateTask _updateTask = ref.read(updateTaskProvider);
   late final ToggleTask _toggleTask = ref.read(toggleTaskProvider);
-  late final ScheduleTaskNotification scheduleTaskNotification =
-      ref.read(scheduleTaskNotificationProvider);
-  late final CancelTaskNotification cancelTaskNotification =
-      ref.read(cancelTaskNotificationProvider);
 
   /// Debounce timer for subtask syncing. Resets on every subtask toggle.
   Timer? _subtaskSyncTimer;
@@ -89,10 +82,6 @@ class HomeNotifier extends _$HomeNotifier {
       );
       tasks.add(newTask);
       state = AsyncData(tasks);
-      if (reminderDate != null) {
-        newTask.reminderDate = reminderDate;
-        await scheduleTaskNotification.call(newTask);
-      }
     } catch (e, st) {
       ref.read(errorHandlerProvider).handle(e, st);
       state = AsyncData(tasks);
@@ -122,12 +111,6 @@ class HomeNotifier extends _$HomeNotifier {
       int index = tasks.indexWhere((task) => task.id == taskId);
       tasks[index] = updatedTask;
       state = AsyncData(tasks);
-      if (reminderDate != null) {
-        updatedTask.copyWith(
-          reminderDate: reminderDate,
-        );
-        await scheduleTaskNotification.call(updatedTask);
-      }
     } catch (e, st) {
       ref.read(errorHandlerProvider).handle(e, st);
       // Restore previous state
@@ -152,7 +135,6 @@ class HomeNotifier extends _$HomeNotifier {
       List<Task> tasks = List<Task>.from(state.value ?? []);
       tasks.removeWhere((task) => task.id == taskId);
       state = AsyncData(tasks);
-      await cancelTaskNotification(taskId);
     } catch (e, st) {
       ref.read(errorHandlerProvider).handle(e, st);
       state = AsyncData(previousTasks);
@@ -184,27 +166,12 @@ class HomeNotifier extends _$HomeNotifier {
         tasks[index] = task.copyWith(completed: updatedTask.completed);
         state = AsyncData(tasks);
       }
-      if (updatedTask.completed) {
-        await cancelTaskNotification(task.id);
-      } else {
-        await scheduleTaskNotification.call(task);
-      }
     } catch (e, st) {
       // Revert optimistic update
       tasks[index] = task;
       state = AsyncData(tasks);
       ref.read(errorHandlerProvider).handle(e, st);
     }
-  }
-
-  Future<bool> checkNotificationPermission() async {
-    final androidPlugin = ref
-        .read(flutterLocalNotificationsProvider)
-        .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>();
-
-    final granted = await androidPlugin?.requestNotificationsPermission();
-    return granted ?? false;
   }
 
   Future<void> toggleSubtask(
@@ -278,13 +245,6 @@ class HomeNotifier extends _$HomeNotifier {
       if (currentIndex != -1) {
         currentTasks[currentIndex] = updatedTask;
         state = AsyncData(currentTasks);
-      }
-
-      // Handle notifications
-      if (updatedTask.completed) {
-        await cancelTaskNotification(taskId);
-      } else {
-        await scheduleTaskNotification.call(updatedTask);
       }
     } catch (e, st) {
       // Revert to original task state on failure
