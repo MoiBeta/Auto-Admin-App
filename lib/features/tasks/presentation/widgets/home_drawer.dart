@@ -5,42 +5,56 @@ import 'package:auto_admin_app/global/router/router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class HomeDrawer extends ConsumerWidget {
+class HomeDrawer extends ConsumerStatefulWidget {
   const HomeDrawer({super.key});
 
   @override
-  Widget build(
-    BuildContext context,
-    WidgetRef ref,
-  ) {
-    return Drawer(
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            vertical: 20,
-            horizontal: 5,
+  ConsumerState<HomeDrawer> createState() => _HomeDrawerState();
+}
+
+class _HomeDrawerState extends ConsumerState<HomeDrawer> {
+  int _selectedIndex = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return NavigationDrawer(
+      selectedIndex: _selectedIndex,
+      onDestinationSelected: (index) {
+        setState(() => _selectedIndex = index);
+        if (index == 1) {
+          // Logout
+          Navigator.of(context).pop();
+          ref.read(authNotifierProvider.notifier).logout();
+          ref.invalidate(homeProvider);
+          ref.read(routerProvider).go(Routes.auth);
+        }
+      },
+      children: [
+        DrawerHeader(
+          decoration: BoxDecoration(
+            color: colorScheme.primaryContainer,
           ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              GestureDetector(
-                child: Row(
-                  children: [
-                    Icon(Icons.logout),
-                    Text('Cerrar sesión'),
-                  ],
-                ),
-                onTap: () async {
-                  Navigator.of(context).pop(); // Close drawer
-                  await ref.read(authNotifierProvider.notifier).logout();
-                  ref.invalidate(homeProvider); // Clear cached tasks
-                  ref.read(routerProvider).go(Routes.auth);
-                },
-              ),
-            ],
+          child: Text(
+            'Auto Admin',
+            style: textTheme.headlineSmall?.copyWith(
+              color: colorScheme.onPrimaryContainer,
+            ),
           ),
         ),
-      ),
+        const NavigationDrawerDestination(
+          icon: Icon(Icons.home_outlined),
+          selectedIcon: Icon(Icons.home),
+          label: Text('Inicio'),
+        ),
+        const NavigationDrawerDestination(
+          icon: Icon(Icons.logout_outlined),
+          selectedIcon: Icon(Icons.logout),
+          label: Text('Cerrar sesión'),
+        ),
+      ],
     );
   }
 }

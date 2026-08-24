@@ -1,30 +1,23 @@
-// This is a basic Flutter widgets test.
+// Basic smoke test for the Auto Admin app.
 //
-// To perform an interaction with a widgets in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widgets
-// tree, read text, and verify that the values of widgets properties are correct.
+// Verifies that the app can be instantiated without errors.
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:auto_admin_app/main.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('App smoke test — MyApp builds without errors',
+      (WidgetTester tester) async {
+    // MyApp requires a ProviderScope (Riverpod) to function.
+    await tester.pumpWidget(
+      const ProviderScope(child: MyApp()),
+    );
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
-
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
+    // Verify that the app builds without throwing.
+    // The app will show either the auth screen or home screen
+    // depending on auth state, both are valid.
     await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
   });
 }

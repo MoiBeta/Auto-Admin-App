@@ -7,6 +7,7 @@ import 'package:auto_admin_app/features/tasks/domain/entities/task.dart';
 import 'package:auto_admin_app/features/tasks/presentation/pages/adding_task_screen.dart';
 import 'package:auto_admin_app/features/tasks/presentation/pages/home_page.dart';
 import 'package:auto_admin_app/global/pages/splash_screen.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -20,33 +21,75 @@ GoRouter router(Ref ref) {
       GoRoute(
         path: Routes.splash,
         name: Routes.splash,
-        builder: (context, state) => const SplashScreen(),
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const SplashScreen(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+          transitionDuration: const Duration(milliseconds: 300),
+        ),
       ),
       GoRoute(
         path: Routes.auth,
         name: Routes.auth,
-        builder: (context, state) => const AuthPage(),
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const AuthPage(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+          transitionDuration: const Duration(milliseconds: 300),
+        ),
       ),
       GoRoute(
         path: Routes.login,
         name: Routes.login,
-        builder: (context, state) => const LoginScreen(),
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const LoginScreen(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+          transitionDuration: const Duration(milliseconds: 300),
+        ),
       ),
       GoRoute(
         path: Routes.register,
         name: Routes.register,
-        builder: (context, state) => const RegisterScreen(),
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const RegisterScreen(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+          transitionDuration: const Duration(milliseconds: 300),
+        ),
       ),
       GoRoute(
         path: Routes.home,
         name: Routes.home,
-        builder: (context, state) => const HomePage(),
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const HomePage(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+          transitionDuration: const Duration(milliseconds: 300),
+        ),
       ),
       GoRoute(
         path: Routes.addingTask,
         name: Routes.addingTask,
-        builder: (context, state) => AddingTaskScreen(
-          task: state.extra != null ? state.extra as Task? : null,
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: AddingTaskScreen(
+            task: state.extra != null ? state.extra as Task? : null,
+          ),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+          transitionDuration: const Duration(milliseconds: 300),
         ),
       ),
     ],

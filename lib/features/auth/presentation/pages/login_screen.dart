@@ -1,5 +1,6 @@
 import 'package:auto_admin_app/core/constants/routes.dart';
 import 'package:auto_admin_app/features/auth/injection/auth_providers.dart';
+import 'package:auto_admin_app/global/theme/spacing.dart';
 import 'package:auto_admin_app/global/widgets/loading_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,12 +24,14 @@ class LoginScreen extends ConsumerWidget {
     });
 
     return Scaffold(
+      appBar: AppBar(),
       body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        padding: const EdgeInsets.symmetric(horizontal: Spacing.formHorizontal),
         child: ListView(
           children: [
-            Container(
-              margin: const EdgeInsets.only(top: 50, bottom: 40),
+            Padding(
+              padding:
+                  const EdgeInsets.only(top: Spacing.xl, bottom: Spacing.lg),
               child: Lottie.asset('assets/animations/task-login.json'),
             ),
             TextFormField(
@@ -36,13 +39,13 @@ class LoginScreen extends ConsumerWidget {
               keyboardType: TextInputType.emailAddress,
               decoration: const InputDecoration(hintText: 'Correo'),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: Spacing.formFieldSpacing),
             TextFormField(
               controller: authNotifier.passwordController,
               obscureText: true,
               decoration: const InputDecoration(hintText: 'Contraseña'),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: Spacing.formFieldSpacing),
             LoadingButton(
               isLoading: isLoading,
               onPressed: () async {
@@ -50,8 +53,8 @@ class LoginScreen extends ConsumerWidget {
               },
               label: 'Iniciar sesión',
             ),
-            const SizedBox(height: 8),
-            FilledButton(
+            const SizedBox(height: Spacing.sm),
+            TextButton(
               onPressed: isLoading
                   ? null
                   : () => context.pushReplacementNamed(Routes.register),

@@ -22,10 +22,10 @@ class ErrorInterceptor extends Interceptor {
   AppError _mapDioError(DioException err) {
     // Connection / network errors
     if (err.type == DioExceptionType.connectionError ||
-        err.type == DioExceptionType.unknown &&
-            err.error is SocketException) {
-      return const AppError(
-        message: 'Sin conexión al servidor. Verifica tu red.',
+        err.type == DioExceptionType.unknown && err.error is SocketException) {
+      return AppError(
+        message:
+            'Sin conexión al servidor. Verifica tu red. ${err.error.toString()}',
         type: AppErrorType.network,
       );
     }

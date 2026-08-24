@@ -1,7 +1,7 @@
 import 'package:auto_admin_app/features/tasks/data/enums/task_frequency.dart';
 import 'package:auto_admin_app/features/tasks/domain/entities/task.dart';
 import 'package:auto_admin_app/features/tasks/presentation/provider/home_provider.dart';
-import 'package:auto_admin_app/global/widgets/loading_button.dart';
+import 'package:auto_admin_app/global/theme/spacing.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
@@ -92,122 +92,141 @@ class AddingTaskScreen extends HookConsumerWidget {
         title: Text(task == null ? 'Nueva tarea' : 'Editar tarea'),
       ),
       body: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              TextFormField(
-                decoration: const InputDecoration(hintText: 'Título'),
-                controller: titleEditingController,
-              ),
-              const SizedBox(height: 10),
-
-              // fecha
-              GestureDetector(
-                onTap: () async {
-                  final date = await showDatePicker(
-                    context: context,
-                    firstDate: DateTime.now(),
-                    lastDate: DateTime.now().add(const Duration(days: 360)),
-                  );
-                  if (date != null) {
-                    selectedDate.value = date;
-                    dateEditingController.text =
-                        DateFormat('MMM dd yyyy').format(date);
-                  }
-                },
-                child: TextFormField(
-                  controller: dateEditingController,
-                  decoration: const InputDecoration(hintText: 'Fecha'),
-                  enabled: false,
-                ),
-              ),
-              const SizedBox(height: 10),
-
-              GestureDetector(
-                onTap: () async {
-                  if (!context.mounted) return;
-                  final time = await showTimePicker(
-                    context: context,
-                    initialTime: TimeOfDay.now(),
-                  );
-                  if (time != null) {
-                    selectedTime.value = time;
-                    if (context.mounted) {
-                      reminderEditingController.text = time.format(context);
-                    }
-                  }
-                },
-                child: TextFormField(
-                  controller: reminderEditingController,
-                  decoration:
-                      const InputDecoration(hintText: 'Hora de recordatorio'),
-                  enabled: false,
-                ),
-              ),
-
-              const SizedBox(height: 10),
-
-              DropdownButton<TaskFrequency>(
-                value: taskFrequency.value,
-                items: TaskFrequency.values.map((freq) {
-                  return DropdownMenuItem(
-                    value: freq,
-                    child: Text(getNameFromTaskFrequency(freq)),
-                  );
-                }).toList(),
-                onChanged: (val) {
-                  if (val != null) taskFrequency.value = val;
-                },
-              ),
-
-              const SizedBox(height: 20),
-
-              Row(
+        padding: const EdgeInsets.symmetric(horizontal: Spacing.formHorizontal),
+        child: Card(
+          elevation: 0,
+          color: Theme.of(context).colorScheme.surfaceContainerLow,
+          child: Padding(
+            padding: const EdgeInsets.all(Spacing.formHorizontal),
+            child: SingleChildScrollView(
+              child: Column(
                 children: [
-                  Expanded(
-                    child: TextField(
-                      controller: subtaskController,
+                  TextFormField(
+                    decoration: const InputDecoration(hintText: 'Título'),
+                    controller: titleEditingController,
+                  ),
+                  const SizedBox(height: Spacing.formFieldSpacing),
+
+                  // fecha
+                  GestureDetector(
+                    onTap: () async {
+                      final date = await showDatePicker(
+                        context: context,
+                        firstDate: DateTime.now(),
+                        lastDate: DateTime.now().add(const Duration(days: 360)),
+                      );
+                      if (date != null) {
+                        selectedDate.value = date;
+                        dateEditingController.text =
+                            DateFormat('MMM dd yyyy').format(date);
+                      }
+                    },
+                    child: TextFormField(
+                      controller: dateEditingController,
                       decoration: const InputDecoration(
-                        hintText: 'Agregar subtarea...',
+                        hintText: 'Fecha',
+                        suffixIcon: Icon(Icons.calendar_today),
                       ),
-                      onSubmitted: (_) => addSubTask(),
+                      enabled: false,
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.add_circle_outline),
-                    onPressed: addSubTask,
+                  const SizedBox(height: Spacing.formFieldSpacing),
+
+                  GestureDetector(
+                    onTap: () async {
+                      if (!context.mounted) return;
+                      final time = await showTimePicker(
+                        context: context,
+                        initialTime: TimeOfDay.now(),
+                      );
+                      if (time != null) {
+                        selectedTime.value = time;
+                        if (context.mounted) {
+                          reminderEditingController.text = time.format(context);
+                        }
+                      }
+                    },
+                    child: TextFormField(
+                      controller: reminderEditingController,
+                      decoration: const InputDecoration(
+                        hintText: 'Hora de recordatorio',
+                        suffixIcon: Icon(Icons.access_time),
+                      ),
+                      enabled: false,
+                    ),
+                  ),
+
+                  const SizedBox(height: Spacing.formFieldSpacing),
+
+                  DropdownMenu<TaskFrequency>(
+                    initialSelection: taskFrequency.value,
+                    dropdownMenuEntries: TaskFrequency.values.map((freq) {
+                      return DropdownMenuEntry<TaskFrequency>(
+                        value: freq,
+                        label: getNameFromTaskFrequency(freq),
+                      );
+                    }).toList(),
+                    onSelected: (val) {
+                      if (val != null) taskFrequency.value = val;
+                    },
+                  ),
+
+                  const SizedBox(height: Spacing.lg),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: subtaskController,
+                          decoration: const InputDecoration(
+                            hintText: 'Agregar subtarea...',
+                          ),
+                          onSubmitted: (_) => addSubTask(),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.add_circle_outline),
+                        onPressed: addSubTask,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: Spacing.formFieldSpacing),
+
+                  if (subtasks.value.isNotEmpty)
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: subtasks.value.length,
+                      itemBuilder: (context, index) {
+                        final subtask = subtasks.value[index];
+                        return ListTile(
+                          title: Text(subtask),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.delete_outline),
+                            onPressed: () {
+                              subtasks.value = [
+                                ...subtasks.value..removeAt(index),
+                              ];
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                  const SizedBox(height: Spacing.lg),
+
+                  FilledButton.tonal(
+                    onPressed: isLoading ? null : onSave,
+                    child: isLoading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Text(task == null ? 'Agregar' : 'Editar'),
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
-
-              if (subtasks.value.isNotEmpty)
-                ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: subtasks.value.length,
-                  itemBuilder: (context, index) {
-                    final subtask = subtasks.value[index];
-                    return ListTile(
-                      title: Text(subtask),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete_outline),
-                        onPressed: () {
-                          subtasks.value = [...subtasks.value..removeAt(index)];
-                        },
-                      ),
-                    );
-                  },
-                ),
-              const SizedBox(height: 20),
-
-              LoadingButton(
-                isLoading: isLoading,
-                onPressed: onSave,
-                label: task == null ? 'Agregar' : 'Editar',
-              ),
-            ],
+            ),
           ),
         ),
       ),

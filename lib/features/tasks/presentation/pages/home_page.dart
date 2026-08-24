@@ -3,6 +3,7 @@ import 'package:auto_admin_app/features/tasks/domain/entities/task.dart';
 import 'package:auto_admin_app/features/tasks/presentation/provider/home_provider.dart';
 import 'package:auto_admin_app/features/tasks/presentation/widgets/home_drawer.dart';
 import 'package:auto_admin_app/features/tasks/presentation/widgets/task_list_tile.dart';
+import 'package:auto_admin_app/global/theme/spacing.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -34,6 +35,7 @@ class HomePage extends ConsumerWidget {
                 ...dates.asMap().entries.map((entry) {
                   final index = entry.key;
                   final date = entry.value;
+                  final colorScheme = Theme.of(context).colorScheme;
 
                   final currentMonth =
                       intl.DateFormat('MMM', 'es').format(date);
@@ -45,27 +47,34 @@ class HomePage extends ConsumerWidget {
                   final shouldShowMonth =
                       index == 0 || currentMonth != previousMonth;
 
+                  final isSelected = selectedDate.month == date.month &&
+                      selectedDate.day == date.day;
+
                   return GestureDetector(
                     onTap: () {
                       ref.read(selectedDateProvider.notifier).selectDate(date);
                     },
-                    child: Container(
-                      margin: EdgeInsets.symmetric(
-                        horizontal: 5,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: Spacing.chipSpacing / 2,
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 48,
+                        minHeight: 48,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.grey.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(5),
-                        border: selectedDate.month == date.month &&
-                                selectedDate.day == date.day
-                            ? Border.all(
-                                width: 2,
-                                color: Colors.black,
-                              )
-                            : null,
+                        color: isSelected
+                            ? colorScheme.secondaryContainer
+                            : colorScheme.surfaceContainerHigh,
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      padding: EdgeInsets.all(5),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: Spacing.sm,
+                        vertical: Spacing.sm,
+                      ),
                       child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           if (shouldShowMonth)
                             Text(
@@ -74,16 +83,30 @@ class HomePage extends ConsumerWidget {
                                   .toUpperCase(),
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
+                                fontSize: 10,
+                                color: isSelected
+                                    ? colorScheme.onSecondaryContainer
+                                    : colorScheme.onSurface,
                               ),
                             ),
                           Text(
                             intl.DateFormat('EEE', 'es')
                                 .format(date)
                                 .toUpperCase(),
-                            style: const TextStyle(fontSize: 12),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isSelected
+                                  ? colorScheme.onSecondaryContainer
+                                  : colorScheme.onSurface,
+                            ),
                           ),
                           Text(
                             intl.DateFormat('dd').format(date),
+                            style: TextStyle(
+                              color: isSelected
+                                  ? colorScheme.onSecondaryContainer
+                                  : colorScheme.onSurface,
+                            ),
                           ),
                         ],
                       ),
@@ -94,21 +117,28 @@ class HomePage extends ConsumerWidget {
             ),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.all(8.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: Spacing.screenHorizontal,
+                ),
                 child: tasksList.when(
                   data: (data) => ReorderableListView(
                     onReorderItem: (int oldIndex, int newIndex) async {
                       ref.read(homeProvider.notifier).updateTaskPriorities(
                           oldIndex: oldIndex, newIndex: newIndex);
                     },
-                    footer: SizedBox(
+                    footer: const SizedBox(
                       height: 75,
                     ),
                     children: [
                       ...data.asMap().entries.map(
-                            (entry) => TaskListTile(
-                              task: entry.value,
+                            (entry) => Padding(
                               key: ValueKey('${entry.value.id}_${entry.key}'),
+                              padding: const EdgeInsets.only(
+                                bottom: Spacing.listItemSpacing,
+                              ),
+                              child: TaskListTile(
+                                task: entry.value,
+                              ),
                             ),
                           ),
                     ],
@@ -126,6 +156,7 @@ class HomePage extends ConsumerWidget {
         ),
       ),
       floatingActionButton: FloatingActionButton(
+        tooltip: 'Agregar nueva tarea',
         child: const Icon(Icons.add),
         onPressed: () {
           context.pushNamed(Routes.addingTask);
