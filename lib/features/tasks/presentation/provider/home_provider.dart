@@ -78,6 +78,7 @@ class HomeNotifier extends _$HomeNotifier {
           frequency: frequency,
           priority: newPriority,
           subTasks: subtasks,
+          reminderDate: reminderDate,
         ),
       );
       tasks.add(newTask);

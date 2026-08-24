@@ -8,6 +8,7 @@ class NewTaskData {
   TaskFrequency frequency;
   int priority;
   List<String>? subTasks;
+  DateTime? reminderDate;
 
   NewTaskData({
     required this.title,
@@ -16,6 +17,7 @@ class NewTaskData {
     required this.priority,
     this.description,
     this.subTasks,
+    this.reminderDate,
   });
 
   Map<String, dynamic> toJson() {
@@ -30,6 +32,12 @@ class NewTaskData {
                 'title': e,
               })
           .toList(),
+      if (reminderDate != null)
+        'reminder': {
+          'timeMinutes':
+              reminderDate!.toUtc().hour * 60 + reminderDate!.toUtc().minute,
+          'enabled': true,
+        },
     };
   }
 }
