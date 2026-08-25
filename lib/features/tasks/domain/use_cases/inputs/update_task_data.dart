@@ -8,6 +8,7 @@ class UpdateTaskData {
   TaskFrequency frequency;
   List<String>? subTasks;
   int? priority;
+  DateTime? reminderDate;
 
   UpdateTaskData({
     required this.taskId,
@@ -17,6 +18,7 @@ class UpdateTaskData {
     this.priority,
     this.description,
     this.subTasks,
+    this.reminderDate,
   });
 
   toJson() {
@@ -31,6 +33,12 @@ class UpdateTaskData {
                   'title': e,
                 })
             .toList(),
+      if (reminderDate != null)
+        'reminder': {
+          'timeMinutes':
+              reminderDate!.toUtc().hour * 60 + reminderDate!.toUtc().minute,
+          'enabled': true,
+        },
     };
   }
 }

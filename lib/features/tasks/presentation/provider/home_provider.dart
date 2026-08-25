@@ -106,6 +106,7 @@ class HomeNotifier extends _$HomeNotifier {
           startDate: startDate,
           frequency: frequency,
           subTasks: subtasks,
+          reminderDate: reminderDate,
         ),
       );
       List<Task> tasks = List<Task>.from(state.value ?? []);
