@@ -14,6 +14,10 @@ class Task {
   DateTime? reminderDate;
   int priority;
 
+  /// Local day the habit starts; weekly/monthly/yearly habits repeat on it.
+  /// [startDate] is the day of the period being shown.
+  DateTime? habitStartDate;
+
   Task({
     required this.id,
     required this.userId,
@@ -26,6 +30,7 @@ class Task {
     this.description,
     this.subtasks = const [],
     this.reminderDate,
+    this.habitStartDate,
   });
 
   Task copyWith({
@@ -40,6 +45,7 @@ class Task {
     TaskFrequency? taskFrequency,
     DateTime? reminderDate,
     int? priority,
+    DateTime? habitStartDate,
   }) {
     return Task(
       id: id ?? this.id,
@@ -53,6 +59,7 @@ class Task {
       taskFrequency: taskFrequency ?? this.taskFrequency,
       reminderDate: reminderDate ?? this.reminderDate,
       priority: priority ?? this.priority,
+      habitStartDate: habitStartDate ?? this.habitStartDate,
     );
   }
 }

@@ -10,6 +10,9 @@ class NewTaskData {
   List<String>? subTasks;
   DateTime? reminderDate;
 
+  /// IANA time zone of the device, sent with the reminder.
+  String? timezone;
+
   NewTaskData({
     required this.title,
     required this.startDate,
@@ -18,6 +21,7 @@ class NewTaskData {
     this.description,
     this.subTasks,
     this.reminderDate,
+    this.timezone,
   });
 
   Map<String, dynamic> toJson() {
@@ -34,8 +38,12 @@ class NewTaskData {
           .toList(),
       if (reminderDate != null)
         'reminder': {
-          'timeMinutes':
-              reminderDate!.toUtc().hour * 60 + reminderDate!.toUtc().minute,
+          // Local time + device offset, so the backend evaluates the reminder
+          // against the user's local day.
+          'timeMinutes': reminderDate!.hour * 60 + reminderDate!.minute,
+          'utcOffsetMinutes': reminderDate!.timeZoneOffset.inMinutes,
+          // IANA zone, so the reminder follows daylight saving time changes.
+          if (timezone != null) 'timezone': timezone,
           'enabled': true,
         },
     };

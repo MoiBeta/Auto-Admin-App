@@ -28,6 +28,7 @@ dependencies:
   flutter_secure_storage: ^10.0.0
   dio: ^5.9.2
   flutter_dotenv: ^6.0.1
+  flutter_timezone: ^5.1.1
 
 dev_dependencies:
   flutter_test:

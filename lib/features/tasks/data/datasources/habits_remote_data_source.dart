@@ -7,7 +7,6 @@ import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/delete_tas
 import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/new_task_data.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/toggle_task_data.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/update_task_data.dart';
-import 'package:dio/dio.dart';
 import 'package:intl/intl.dart';
 
 class HabitsRemoteDataSource implements TasksDataSource {
@@ -33,18 +32,15 @@ class HabitsRemoteDataSource implements TasksDataSource {
 
   @override
   Future<TaskModel> editTask(UpdateTaskData updateTaskData) async {
-    Response? response;
-    try {
-      response = await client.patch(
-        '/habits/${updateTaskData.taskId}',
-        data: updateTaskData.toJson(),
-      );
-    } on DioException catch (e) {
-      log('DioException: ${e.response?.data} ${e.message} trace: ${e.stackTrace}');
-    }
-
-    return TaskModel.fromJson(response!.data);
+    final response = await client.patch(
+      '/habits/${updateTaskData.taskId}${_dateQuery(updateTaskData.date)}',
+      data: updateTaskData.toJson(),
+    );
+    return TaskModel.fromJson(response.data);
   }
+
+  String _dateQuery(DateTime? date) =>
+      date == null ? '' : '?date=${DateFormat('yyyy-MM-dd').format(date)}';
 
   @override
   Future<List<TaskModel>> getAllTasks(DateTime date) async {

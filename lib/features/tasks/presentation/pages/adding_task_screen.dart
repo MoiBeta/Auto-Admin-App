@@ -27,6 +27,7 @@ class AddingTaskScreen extends HookConsumerWidget {
     final taskFrequency = useState<TaskFrequency>(TaskFrequency.daily);
     final selectedDate = useState<DateTime>(DateTime.now());
     final selectedTime = useState<TimeOfDay?>(null);
+    final startDateChanged = useState(false);
     final subtasks = useState<List<String>>([]);
 
     // init (equivalente a initState)
@@ -34,11 +35,21 @@ class AddingTaskScreen extends HookConsumerWidget {
       if (task != null) {
         final Task t = task!;
         titleEditingController.text = t.title;
-        selectedDate.value = t.startDate;
+        selectedDate.value = t.habitStartDate ?? t.startDate;
         dateEditingController.text =
-            DateFormat('MMM dd yyyy').format(t.startDate);
+            DateFormat('MMM dd yyyy').format(selectedDate.value);
         taskFrequency.value = t.taskFrequency;
         subtasks.value = [...?t.subtasks?.map((s) => s.title)];
+        if (t.reminderDate != null) {
+          selectedTime.value = TimeOfDay.fromDateTime(t.reminderDate!);
+          // Formatting needs the localizations, available after the first frame.
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (context.mounted && selectedTime.value != null) {
+              reminderEditingController.text =
+                  selectedTime.value!.format(context);
+            }
+          });
+        }
       }
       return null;
     }, const []);
@@ -71,6 +82,9 @@ class AddingTaskScreen extends HookConsumerWidget {
               frequency: taskFrequency.value,
               startDate: selectedDate.value,
               reminderDate: reminderDateTime,
+              removeReminder:
+                  task!.reminderDate != null && selectedTime.value == null,
+              newStartDate: startDateChanged.value ? selectedDate.value : null,
               subtasks: subtasks.value,
               taskId: task!.id,
             );
@@ -110,13 +124,22 @@ class AddingTaskScreen extends HookConsumerWidget {
                   // fecha
                   GestureDetector(
                     onTap: () async {
+                      final now = DateTime.now();
+                      final today = DateTime(now.year, now.month, now.day);
+                      final current = selectedDate.value;
                       final date = await showDatePicker(
                         context: context,
-                        firstDate: DateTime.now(),
-                        lastDate: DateTime.now().add(const Duration(days: 360)),
+                        initialDate: current,
+                        // An existing habit may have started in the past.
+                        firstDate: current.isBefore(today) ? current : today,
+                        lastDate: [
+                          current,
+                          today.add(const Duration(days: 360)),
+                        ].reduce((a, b) => a.isAfter(b) ? a : b),
                       );
                       if (date != null) {
                         selectedDate.value = date;
+                        startDateChanged.value = true;
                         dateEditingController.text =
                             DateFormat('MMM dd yyyy').format(date);
                       }
@@ -132,35 +155,52 @@ class AddingTaskScreen extends HookConsumerWidget {
                   ),
                   const SizedBox(height: Spacing.formFieldSpacing),
 
-                  GestureDetector(
-                    onTap: () async {
-                      if (!context.mounted) return;
-                      final time = await showTimePicker(
-                        context: context,
-                        initialTime: TimeOfDay.now(),
-                      );
-                      if (time != null) {
-                        selectedTime.value = time;
-                        if (context.mounted) {
-                          reminderEditingController.text = time.format(context);
-                        }
-                      }
-                    },
-                    child: TextFormField(
-                      controller: reminderEditingController,
-                      decoration: const InputDecoration(
-                        hintText: 'Hora de recordatorio',
-                        suffixIcon: Icon(Icons.access_time),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () async {
+                            if (!context.mounted) return;
+                            final time = await showTimePicker(
+                              context: context,
+                              initialTime:
+                                  selectedTime.value ?? TimeOfDay.now(),
+                            );
+                            if (time != null) {
+                              selectedTime.value = time;
+                              if (context.mounted) {
+                                reminderEditingController.text =
+                                    time.format(context);
+                              }
+                            }
+                          },
+                          child: TextFormField(
+                            controller: reminderEditingController,
+                            decoration: const InputDecoration(
+                              hintText: 'Hora de recordatorio',
+                              suffixIcon: Icon(Icons.access_time),
+                            ),
+                            enabled: false,
+                          ),
+                        ),
                       ),
-                      enabled: false,
-                    ),
+                      if (selectedTime.value != null)
+                        IconButton(
+                          tooltip: 'Quitar recordatorio',
+                          icon: const Icon(Icons.close),
+                          onPressed: () {
+                            selectedTime.value = null;
+                            reminderEditingController.clear();
+                          },
+                        ),
+                    ],
                   ),
 
                   const SizedBox(height: Spacing.formFieldSpacing),
 
                   DropdownMenu<TaskFrequency>(
                     initialSelection: taskFrequency.value,
-                    dropdownMenuEntries: TaskFrequency.values.map((freq) {
+                    dropdownMenuEntries: TaskFrequency.supported.map((freq) {
                       return DropdownMenuEntry<TaskFrequency>(
                         value: freq,
                         label: getNameFromTaskFrequency(freq),

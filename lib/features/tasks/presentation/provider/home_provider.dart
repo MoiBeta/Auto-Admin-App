@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:developer';
 
 import 'package:auto_admin_app/core/errors/error_handler.dart';
+import 'package:auto_admin_app/core/time/device_timezone.dart';
 import 'package:auto_admin_app/features/tasks/data/datasources/data_source.dart';
 import 'package:auto_admin_app/features/tasks/data/enums/task_frequency.dart';
 import 'package:auto_admin_app/features/tasks/domain/entities/sub_task.dart';
@@ -29,14 +30,13 @@ class HomeNotifier extends _$HomeNotifier {
   late final UpdateTask _updateTask = ref.read(updateTaskProvider);
   late final ToggleTask _toggleTask = ref.read(toggleTaskProvider);
 
-  /// Debounce timer for subtask syncing. Resets on every subtask toggle.
-  Timer? _subtaskSyncTimer;
+  /// Debounce timers for subtask syncing, one per task, so toggling subtasks
+  /// of another task does not cancel a pending sync.
+  final Map<String, Timer> _subtaskSyncTimers = {};
 
-  /// Task ID that has pending subtask changes.
-  String? _pendingSyncTaskId;
-
-  /// The original task before any optimistic changes (for revert on error).
-  Task? _pendingSyncOriginalTask;
+  /// The original task before any optimistic changes (for revert on error),
+  /// keyed by task ID.
+  final Map<String, Task> _pendingSyncOriginalTasks = {};
 
   @override
   Future<List<Task>> build() async {
@@ -79,6 +79,7 @@ class HomeNotifier extends _$HomeNotifier {
           priority: newPriority,
           subTasks: subtasks,
           reminderDate: reminderDate,
+          timezone: reminderDate != null ? await deviceTimezone() : null,
         ),
       );
       tasks.add(newTask);
@@ -95,10 +96,15 @@ class HomeNotifier extends _$HomeNotifier {
     required DateTime startDate,
     required TaskFrequency frequency,
     DateTime? reminderDate,
+    bool removeReminder = false,
+    DateTime? newStartDate,
     List<String>? subtasks,
   }) async {
+    final previous =
+        state.value?.where((task) => task.id == taskId).firstOrNull;
     state = const AsyncLoading();
     try {
+      final selectedDate = ref.read(selectedDateProvider);
       Task updatedTask = await _updateTask.call(
         UpdateTaskData(
           taskId: taskId,
@@ -107,11 +113,21 @@ class HomeNotifier extends _$HomeNotifier {
           frequency: frequency,
           subTasks: subtasks,
           reminderDate: reminderDate,
+          removeReminder: removeReminder,
+          timezone: reminderDate != null ? await deviceTimezone() : null,
+          newStartDate: newStartDate,
+          date: selectedDate,
         ),
       );
+      // A new start day or frequency can move the task to other days: reload
+      // the list instead of patching it.
+      if (newStartDate != null || previous?.taskFrequency != frequency) {
+        state = AsyncData(await getTasks(selectedDate));
+        return;
+      }
       List<Task> tasks = List<Task>.from(state.value ?? []);
       int index = tasks.indexWhere((task) => task.id == taskId);
-      tasks[index] = updatedTask;
+      if (index != -1) tasks[index] = updatedTask;
       state = AsyncData(tasks);
     } catch (e, st) {
       ref.read(errorHandlerProvider).handle(e, st);
@@ -155,6 +171,7 @@ class HomeNotifier extends _$HomeNotifier {
   }) async {
     List<Task> tasks = List<Task>.from(state.value ?? []);
     int index = tasks.indexWhere((currentTask) => currentTask.id == task.id);
+    if (index == -1) return;
     tasks[index] = task.copyWith(completed: !task.completed);
     state = AsyncData(tasks);
     try {
@@ -203,23 +220,19 @@ class HomeNotifier extends _$HomeNotifier {
     state = AsyncData(tasks);
 
     // 2. Store original task for revert (only first time per debounce window)
-    if (_pendingSyncTaskId != task.id) {
-      _pendingSyncOriginalTask = task;
-    }
-    _pendingSyncTaskId = task.id;
+    _pendingSyncOriginalTasks.putIfAbsent(task.id, () => task);
 
-    // 3. Reset the debounce timer — send the full list after user stops
-    _subtaskSyncTimer?.cancel();
-    _subtaskSyncTimer = Timer(
+    // 3. Reset this task's debounce timer — send the full list after user stops
+    _subtaskSyncTimers[task.id]?.cancel();
+    _subtaskSyncTimers[task.id] = Timer(
       const Duration(seconds: 1),
       () => _syncSubtasksToBackend(task.id, date),
     );
   }
 
   Future<void> _syncSubtasksToBackend(String taskId, DateTime date) async {
-    final originalTask = _pendingSyncOriginalTask;
-    _pendingSyncTaskId = null;
-    _pendingSyncOriginalTask = null;
+    final originalTask = _pendingSyncOriginalTasks.remove(taskId);
+    _subtaskSyncTimers.remove(taskId);
 
     // Get the current optimistic state of the task's subtasks
     final tasks = List<Task>.from(state.value ?? []);
@@ -304,6 +317,7 @@ class HomeNotifier extends _$HomeNotifier {
           startDate: updatedTask.startDate,
           frequency: updatedTask.taskFrequency,
           priority: newPriority,
+          date: ref.read(selectedDateProvider),
         ),
       );
     } catch (e, st) {

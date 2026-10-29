@@ -15,6 +15,12 @@ class TaskModel {
   TaskFrequency taskFrequency;
   int priority;
 
+  /// Reminder time (only hour and minute are meaningful), null if none.
+  DateTime? reminderDate;
+
+  /// Local day the habit starts.
+  DateTime? habitStartDate;
+
   TaskModel({
     required this.id,
     required this.userId,
@@ -25,6 +31,8 @@ class TaskModel {
     required this.priority,
     this.description,
     this.subtasks,
+    this.reminderDate,
+    this.habitStartDate,
   });
 
   Task toEntity() => Task(
@@ -37,6 +45,8 @@ class TaskModel {
         completed: completed,
         taskFrequency: taskFrequency,
         priority: priority,
+        reminderDate: reminderDate,
+        habitStartDate: habitStartDate,
       );
 
   factory TaskModel.fromTemplateAndInstance(
@@ -66,7 +76,25 @@ class TaskModel {
         completed: json['completed'],
         taskFrequency: parseFrequency(json['taskFrequency']),
         priority: parsePriority(json['priority']),
+        reminderDate: parseReminder(json['reminder']),
+        habitStartDate: parseDay(json['habitStartDate']),
       );
+
+  /// The backend stores days as UTC midnight; keep the calendar day as a
+  /// local date instead of converting the instant to local time.
+  static DateTime? parseDay(dynamic value) {
+    if (value is! String) return null;
+    final utc = DateTime.tryParse(value)?.toUtc();
+    return utc == null ? null : DateTime(utc.year, utc.month, utc.day);
+  }
+
+  /// The backend stores the reminder as local minutes since midnight.
+  static DateTime? parseReminder(dynamic reminder) {
+    if (reminder is! Map || reminder['timeMinutes'] is! int) return null;
+    final minutes = reminder['timeMinutes'] as int;
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day, minutes ~/ 60, minutes % 60);
+  }
 
   static TaskFrequency parseFrequency(dynamic frequency) {
     if (frequency is String) {
