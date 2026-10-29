@@ -41,13 +41,15 @@ final authDioProvider = Provider<Dio>((ref) {
       tokenManager: tokenManager,
       refreshDio: refreshDio,
       requestDio: dio,
+      onSessionExpired: () =>
+          ref.read(authNotifierProvider.notifier).sessionExpired(),
     ),
     ErrorInterceptor(),
   ]);
   return dio;
 });
 
-final dioClientProvider = Provider<DioClient>((ref) {
+final authDioClientProvider = Provider<DioClient>((ref) {
   final dio = ref.watch(authDioProvider);
   return DioClient(dio);
 });
@@ -57,7 +59,7 @@ final Provider<AuthDataSource> authSourceProvider = Provider<AuthDataSource>(
     tokenManager: ref.watch(
       tokenManagerProvider,
     ),
-    client: ref.watch(dioClientProvider),
+    client: ref.watch(authDioClientProvider),
   ),
 );
 

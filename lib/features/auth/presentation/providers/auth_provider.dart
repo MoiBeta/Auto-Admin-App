@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer';
 
 import 'package:auto_admin_app/core/errors/error_handler.dart';
@@ -14,6 +15,7 @@ import 'package:auto_admin_app/features/auth/domain/usecases/inputs/sign_up_data
 import 'package:auto_admin_app/features/auth/domain/usecases/resend_confirmation_code.dart';
 import 'package:auto_admin_app/features/auth/injection/auth_providers.dart';
 import 'package:auto_admin_app/features/notifications/notification_providers.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -29,6 +31,8 @@ class AuthNotifier extends AsyncNotifier<LoginState> {
   TextEditingController emailController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
 
+  StreamSubscription<String>? _fcmTokenRefreshSub;
+
   @override
   Future<LoginState> build() async {
     _getAuthState = ref.watch(getAuthStateUseCaseProvider);
@@ -38,7 +42,14 @@ class AuthNotifier extends AsyncNotifier<LoginState> {
     _resendConfirmationCode = ref.watch(resendConfirmationCodeUseCaseProvider);
     _authLogout = ref.watch(authLogoutUseCaseProvider);
     _changePassword = ref.watch(changePasswordUseCaseProvider);
+    ref.onDispose(() => _fcmTokenRefreshSub?.cancel());
+
     AuthCredential? authCredential = await _getAuthState();
+    if (authCredential != null) {
+      // Session restored on app start: make sure the backend has this
+      // device's current FCM token.
+      _registerFcmToken();
+    }
     return LoginState(
       isLoading: false,
       credentials: authCredential,
@@ -73,19 +84,57 @@ class AuthNotifier extends AsyncNotifier<LoginState> {
     }
   }
 
-  /// Registers the FCM device token with the backend after login.
+  String get _platform =>
+      kIsWeb ? 'web' : defaultTargetPlatform.name.toLowerCase();
+
+  /// Registers the FCM device token with the backend (after login, register
+  /// or session restore) and keeps it updated when FCM rotates it.
   /// Wrapped in try/catch to avoid blocking the login flow on failure.
   Future<void> _registerFcmToken() async {
     try {
       final pushService = ref.read(pushNotificationServiceProvider);
+      final tokenRepo = ref.read(deviceTokenRepositoryProvider);
       final fcmToken = await pushService.getToken();
       if (fcmToken != null) {
-        final tokenRepo = ref.read(deviceTokenRepositoryProvider);
-        await tokenRepo.registerToken(token: fcmToken, platform: 'android');
+        await tokenRepo.registerToken(token: fcmToken, platform: _platform);
       }
+
+      _fcmTokenRefreshSub ??= pushService.onTokenRefresh.listen((token) {
+        tokenRepo
+            .registerToken(token: token, platform: _platform)
+            .catchError((e) => log('Failed to update FCM token: $e'));
+      });
     } catch (e) {
       log('Failed to register FCM token: $e');
     }
+  }
+
+  /// Removes this device's FCM token from the backend so the device stops
+  /// receiving reminders for the logged-out user.
+  Future<void> _unregisterFcmToken() async {
+    await _fcmTokenRefreshSub?.cancel();
+    _fcmTokenRefreshSub = null;
+    try {
+      final fcmToken =
+          await ref.read(pushNotificationServiceProvider).getToken();
+      if (fcmToken != null) {
+        await ref
+            .read(deviceTokenRepositoryProvider)
+            .unregisterToken(token: fcmToken);
+      }
+    } catch (e) {
+      log('Failed to unregister FCM token: $e');
+    }
+  }
+
+  /// Called by the HTTP layer when the refresh token is rejected.
+  void sessionExpired() {
+    final current = state.value;
+    // While build() is still running it already resolves to "no credentials".
+    if (current == null || current.credentials == null) return;
+    _fcmTokenRefreshSub?.cancel();
+    _fcmTokenRefreshSub = null;
+    state = AsyncData(current.copyWith(clearCredentials: true));
   }
 
   Future<void> register({
@@ -108,6 +157,8 @@ class AuthNotifier extends AsyncNotifier<LoginState> {
           credentials: authCredential,
         ),
       );
+
+      _registerFcmToken();
     } catch (e, st) {
       ref.read(errorHandlerProvider).handle(e, st);
       state = AsyncData(
@@ -138,6 +189,7 @@ class AuthNotifier extends AsyncNotifier<LoginState> {
   }
 
   Future<void> logout() async {
+    await _unregisterFcmToken();
     await _authLogout();
     state = AsyncData(
       state.value!.copyWith(

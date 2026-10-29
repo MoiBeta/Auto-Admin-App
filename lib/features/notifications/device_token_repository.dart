@@ -14,4 +14,8 @@ class DeviceTokenRepository {
       data: {'token': token, 'platform': platform},
     );
   }
+
+  Future<void> unregisterToken({required String token}) async {
+    await _client.delete('/devices/token', data: {'token': token});
+  }
 }

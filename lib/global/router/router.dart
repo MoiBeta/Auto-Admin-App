@@ -15,8 +15,16 @@ part 'router.g.dart';
 
 @Riverpod(keepAlive: true)
 GoRouter router(Ref ref) {
+  // Re-runs `redirect` when the user logs in/out or the session expires.
+  final authChanges = ValueNotifier<bool>(false);
+  ref.listen(authNotifierProvider, (_, next) {
+    authChanges.value = next.value?.credentials != null;
+  });
+  ref.onDispose(authChanges.dispose);
+
   return GoRouter(
     initialLocation: Routes.splash,
+    refreshListenable: authChanges,
     routes: [
       GoRoute(
         path: Routes.splash,

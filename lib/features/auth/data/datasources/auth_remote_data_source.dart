@@ -65,6 +65,12 @@ class AuthRemoteDataSource extends AuthDataSource {
 
   @override
   Future<void> logout() async {
+    try {
+      // Invalidates the refresh token on the server.
+      await client.post('/auth/logout');
+    } catch (_) {
+      // Log out locally even if the server can't be reached.
+    }
     await tokenManager.deleteTokens();
   }
 

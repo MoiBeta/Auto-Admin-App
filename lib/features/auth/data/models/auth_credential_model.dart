@@ -23,7 +23,8 @@ class AuthCredentialModel {
   factory AuthCredentialModel.fromJson(Map<String, dynamic> json) =>
       AuthCredentialModel(
         id: json['id'],
-        fullName: json['name'],
+        // login/register return `fullName`, /auth/me returns `name`
+        fullName: json['fullName'] ?? json['name'],
         email: json['email'],
         isEmailConfirmed: json['isEmailConfirmed'],
       );

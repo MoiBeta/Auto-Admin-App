@@ -26,19 +26,25 @@ final habitsDioProvider = Provider<Dio>((ref) {
   final refreshDio = ref.watch(refreshDioProvider);
   dio.interceptors.addAll([
     AuthInterceptor(
-        tokenManager: tokenManager, refreshDio: refreshDio, requestDio: dio),
+      tokenManager: tokenManager,
+      refreshDio: refreshDio,
+      requestDio: dio,
+      onSessionExpired: () =>
+          ref.read(authNotifierProvider.notifier).sessionExpired(),
+    ),
     ErrorInterceptor(),
   ]);
   return dio;
 });
 
-final dioClientProvider = Provider<DioClient>((ref) {
+final habitsDioClientProvider = Provider<DioClient>((ref) {
   final dio = ref.watch(habitsDioProvider);
   return DioClient(dio);
 });
 
 Provider<TasksDataSource> taskDataSourceProvider = Provider<TasksDataSource>(
-    (ref) => HabitsRemoteDataSource(client: ref.watch(dioClientProvider)));
+    (ref) =>
+        HabitsRemoteDataSource(client: ref.watch(habitsDioClientProvider)));
 
 Provider<TasksRepository> taskRepositoryProvider = Provider<TasksRepository>(
     (ref) => TaskRepositoryImpl(ref.watch(taskDataSourceProvider)));

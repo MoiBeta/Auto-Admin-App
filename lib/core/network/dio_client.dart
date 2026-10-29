@@ -17,8 +17,8 @@ class DioClient {
     return dio.put(path, data: data);
   }
 
-  Future<Response> delete(String path) {
-    return dio.delete(path);
+  Future<Response> delete(String path, {dynamic data}) {
+    return dio.delete(path, data: data);
   }
 
   Future<Response> patch(String path, {dynamic data}) {

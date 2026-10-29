@@ -33,6 +33,9 @@ class PushNotificationService {
     }
   }
 
+  /// Emits a new FCM token whenever FCM rotates it.
+  Stream<String> get onTokenRefresh => _messaging.onTokenRefresh;
+
   /// Listens for messages received while the app is in the foreground.
   void setupForegroundHandler() {
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {

@@ -8,6 +8,6 @@ final pushNotificationServiceProvider = Provider<PushNotificationService>(
 );
 
 final deviceTokenRepositoryProvider = Provider<DeviceTokenRepository>((ref) {
-  final client = ref.watch(dioClientProvider);
+  final client = ref.watch(habitsDioClientProvider);
   return DeviceTokenRepository(client);
 });
