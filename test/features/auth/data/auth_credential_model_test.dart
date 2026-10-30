@@ -9,8 +9,8 @@ void main() {
   });
 
   test('reads name from /auth/me responses', () {
-    final model =
-        AuthCredentialModel.fromJson({'id': '1', 'email': 'a@b.com', 'name': 'Ana'});
+    final model = AuthCredentialModel.fromJson(
+        {'id': '1', 'email': 'a@b.com', 'name': 'Ana'});
     expect(model.fullName, 'Ana');
   });
 }

@@ -17,14 +17,19 @@ import 'package:flutter_test/flutter_test.dart';
 /// Longer than the subtask debounce window.
 const _debounce = Duration(milliseconds: 1150);
 
-Task _task(Map<String, bool> subtasks) => Task(
-      id: 't',
+Task _task(
+  Map<String, bool> subtasks, {
+  String id = 't',
+  int priority = 100,
+}) =>
+    Task(
+      id: id,
       userId: 'u',
       title: 't',
       startDate: DateTime(2026, 10, 30),
       completed: false,
       taskFrequency: TaskFrequency.daily,
-      priority: 100,
+      priority: priority,
       subtasks: subtasks.entries
           .map((e) => Subtask(id: e.key, title: e.key, completed: e.value))
           .toList(),
@@ -44,6 +49,7 @@ class _SyncCall {
 class _FakeTasksRepository extends TasksRepository {
   final List<Task> tasks;
   final List<_SyncCall> syncCalls = [];
+  final List<UpdateTaskData> edits = [];
 
   _FakeTasksRepository(this.tasks);
 
@@ -70,8 +76,11 @@ class _FakeTasksRepository extends TasksRepository {
   Future<void> deleteTask(DeleteTaskData deleteTaskData) =>
       throw UnimplementedError();
   @override
-  Future<Task> editTask(UpdateTaskData updateTaskData) =>
-      throw UnimplementedError();
+  Future<Task> editTask(UpdateTaskData updateTaskData) async {
+    edits.add(updateTaskData);
+    return _task({}, id: updateTaskData.taskId);
+  }
+
   @override
   Future<Task> toggleTask(ToggleTaskData data) => throw UnimplementedError();
 }
@@ -276,6 +285,49 @@ void main() {
       repository.syncCalls.single.succeed();
       await settle();
       expect(shownSubtasks(), {'s1': true, 's2': false});
+    });
+  });
+
+  group('updateTaskPriorities', () {
+    List<String> shownOrder() =>
+        container.read(homeProvider).value!.map((t) => t.id).toList();
+
+    setUp(() async {
+      repository.tasks
+        ..clear()
+        ..addAll([
+          _task({}, id: 'a', priority: 100),
+          _task({}, id: 'b', priority: 200),
+          _task({}, id: 'c', priority: 300),
+        ]);
+      await container
+          .read(homeProvider.notifier)
+          .refreshTasks(container.read(selectedDateProvider));
+    });
+
+    // onReorderItem already gives the index after removing the dragged item.
+    test('moves a task one position down', () async {
+      await container
+          .read(homeProvider.notifier)
+          .updateTaskPriorities(oldIndex: 0, newIndex: 1);
+      expect(shownOrder(), ['b', 'a', 'c']);
+      expect(repository.edits.single.priority, 250);
+    });
+
+    test('moves a task to the end', () async {
+      await container
+          .read(homeProvider.notifier)
+          .updateTaskPriorities(oldIndex: 0, newIndex: 2);
+      expect(shownOrder(), ['b', 'c', 'a']);
+      expect(repository.edits.single.priority, 400);
+    });
+
+    test('moves a task up', () async {
+      await container
+          .read(homeProvider.notifier)
+          .updateTaskPriorities(oldIndex: 2, newIndex: 0);
+      expect(shownOrder(), ['c', 'a', 'b']);
+      expect(repository.edits.single.priority, 0);
     });
   });
 }

@@ -16,7 +16,6 @@ class GlobalErrorNotifier extends Notifier<AppError?> {
   }
 }
 
-final globalErrorProvider =
-    NotifierProvider<GlobalErrorNotifier, AppError?>(
+final globalErrorProvider = NotifierProvider<GlobalErrorNotifier, AppError?>(
   GlobalErrorNotifier.new,
 );

@@ -323,10 +323,6 @@ class HomeNotifier extends _$HomeNotifier {
     final previousTasks = List<Task>.from(state.value ?? []);
     if (previousTasks.isEmpty) return;
 
-    if (newIndex > oldIndex) {
-      newIndex -= 1;
-    }
-
     final tasks = List<Task>.from(previousTasks);
     final movedTask = tasks.removeAt(oldIndex);
     tasks.insert(newIndex, movedTask);
