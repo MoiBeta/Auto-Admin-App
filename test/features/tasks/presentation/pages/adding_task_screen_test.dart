@@ -5,9 +5,15 @@ import 'package:auto_admin_app/features/tasks/presentation/provider/home_provide
 import 'package:auto_admin_app/global/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 void main() {
+  setUpAll(() async {
+    await initializeDateFormatting('es');
+  });
+
   /// Builds the AddingTaskScreen wrapped in ProviderScope with homeProvider
   /// overridden to avoid real async dependencies.
   Widget buildTestWidget({bool saves = true}) {
@@ -23,6 +29,99 @@ void main() {
       ),
     );
   }
+
+  /// Hosts the screen on top of another route, so it can be left.
+  Widget buildRoutedWidget(_FakeHomeNotifier home) {
+    final router = GoRouter(
+      initialLocation: '/form',
+      initialExtra: null,
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (_, __) => const Text('Home'),
+          routes: [
+            GoRoute(
+              path: 'form',
+              builder: (_, __) => const AddingTaskScreen(),
+            ),
+          ],
+        ),
+      ],
+    );
+    return ProviderScope(
+      overrides: [homeProvider.overrideWith(() => home)],
+      child: MaterialApp.router(
+        theme: AppTheme.lightTheme,
+        routerConfig: router,
+      ),
+    );
+  }
+
+  group('AddingTaskScreen - Form', () {
+    testWidgets('explains an empty title instead of doing nothing',
+        (tester) async {
+      final home = _FakeHomeNotifier();
+      await tester.pumpWidget(buildRoutedWidget(home));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextFormField).first, '   ');
+      await tester.tap(find.text('Agregar'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Escribe un título'), findsOneWidget);
+      expect(home.createdTitle, isNull);
+    });
+
+    testWidgets('saves a trimmed title and the subtask left in the field',
+        (tester) async {
+      final home = _FakeHomeNotifier();
+      await tester.pumpWidget(buildRoutedWidget(home));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextFormField).first, '  Leer ');
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Agregar subtarea...'),
+        'Capítulo 1',
+      );
+      await tester.ensureVisible(find.text('Agregar'));
+      await tester.tap(find.text('Agregar'));
+      await tester.pumpAndSettle();
+
+      expect(home.createdTitle, 'Leer');
+      expect(home.createdSubtasks, ['Capítulo 1']);
+      expect(find.text('Home'), findsOneWidget, reason: 'the form closes');
+    });
+
+    testWidgets('asks before discarding changes', (tester) async {
+      await tester.pumpWidget(buildRoutedWidget(_FakeHomeNotifier()));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextFormField).first, 'Leer');
+      await tester.pump();
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+      expect(find.text('¿Descartar los cambios?'), findsOneWidget);
+
+      await tester.tap(find.text('Seguir editando'));
+      await tester.pumpAndSettle();
+      expect(find.text('Leer'), findsOneWidget);
+
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Descartar'));
+      await tester.pumpAndSettle();
+      expect(find.text('Home'), findsOneWidget);
+    });
+
+    testWidgets('leaves without asking when nothing changed', (tester) async {
+      await tester.pumpWidget(buildRoutedWidget(_FakeHomeNotifier()));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+      expect(find.text('Home'), findsOneWidget);
+    });
+  });
 
   group('AddingTaskScreen - Saving', () {
     testWidgets('keeps the form and its content when saving fails',
@@ -147,6 +246,8 @@ void main() {
 /// requiring real dependencies (repositories, use cases, etc.).
 class _FakeHomeNotifier extends HomeNotifier {
   final bool saves;
+  String? createdTitle;
+  List<String>? createdSubtasks;
 
   _FakeHomeNotifier({this.saves = true});
 
@@ -162,16 +263,19 @@ class _FakeHomeNotifier extends HomeNotifier {
     required TaskFrequency frequency,
     DateTime? reminderDate,
     List<String>? subtasks,
-  }) async =>
-      saves
-          ? Task(
-              id: 'new',
-              userId: 'u',
-              title: title,
-              startDate: startDate,
-              completed: false,
-              taskFrequency: frequency,
-              priority: 100,
-            )
-          : null;
+  }) async {
+    createdTitle = title;
+    createdSubtasks = subtasks;
+    return saves
+        ? Task(
+            id: 'new',
+            userId: 'u',
+            title: title,
+            startDate: startDate,
+            completed: false,
+            taskFrequency: frequency,
+            priority: 100,
+          )
+        : null;
+  }
 }
