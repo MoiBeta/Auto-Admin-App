@@ -381,6 +381,35 @@ class HomeNotifier extends _$HomeNotifier {
 
   bool _isShowing(DateTime date) => ref.read(selectedDateProvider) == date;
 
+  Future<void> _renumberPriorities(List<Task> ordered) async {
+    final date = ref.read(selectedDateProvider);
+    final renumbered = [
+      for (final (i, task) in ordered.indexed)
+        task.copyWith(priority: (i + 1) * 100),
+    ];
+    state = AsyncData(renumbered);
+
+    try {
+      for (final (i, task) in renumbered.indexed) {
+        if (task.priority == ordered[i].priority) continue;
+        await _updateTask.call(
+          UpdateTaskData(
+            taskId: task.id,
+            title: task.title,
+            startDate: task.startDate,
+            frequency: task.taskFrequency,
+            priority: task.priority,
+            date: date,
+          ),
+        );
+      }
+    } catch (e, st) {
+      ref.read(errorHandlerProvider).handle(e, st);
+      // Some may have been saved: show what the backend has.
+      if (_isShowing(date)) await refreshTasks(date);
+    }
+  }
+
   /// Undoes a reorder without touching other changes made meanwhile.
   void _moveBack(String taskId, int index, int priority) {
     final tasks = List<Task>.from(state.value ?? []);
@@ -417,6 +446,14 @@ class HomeNotifier extends _$HomeNotifier {
 
     final before = newIndex > 0 ? tasks[newIndex - 1] : null;
     final after = newIndex < tasks.length - 1 ? tasks[newIndex + 1] : null;
+
+    // No integer fits between them: spread the priorities out again.
+    if (before != null &&
+        after != null &&
+        after.priority - before.priority < 2) {
+      await _renumberPriorities(tasks);
+      return;
+    }
 
     int newPriority;
     if (before != null && after != null) {

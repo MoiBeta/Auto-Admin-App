@@ -373,6 +373,23 @@ void main() {
       expect(repository.edits.single.priority, 400);
     });
 
+    test('renumbers when no integer fits between the neighbours', () async {
+      repository.tasks[1] = _task({}, id: 'b', priority: 101);
+      await container
+          .read(homeProvider.notifier)
+          .refreshTasks(container.read(selectedDateProvider));
+
+      await container
+          .read(homeProvider.notifier)
+          .updateTaskPriorities(oldIndex: 2, newIndex: 1);
+
+      expect(shownOrder(), ['a', 'c', 'b']);
+      expect(
+        repository.edits.map((e) => (e.taskId, e.priority)),
+        [('c', 200), ('b', 300)],
+      );
+    });
+
     test('moves a task up', () async {
       await container
           .read(homeProvider.notifier)
