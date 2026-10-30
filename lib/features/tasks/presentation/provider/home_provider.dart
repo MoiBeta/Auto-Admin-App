@@ -39,6 +39,9 @@ class HomeNotifier extends _$HomeNotifier {
 
   /// Identifies the latest load, so a slower older one cannot overwrite it.
   int _latestLoad = 0;
+
+  /// Task toggles waiting for a response, by task and day.
+  final Set<(String, DateTime)> _togglesInFlight = {};
   bool _isLoadingTasks = false;
 
   @override
@@ -182,7 +185,6 @@ class HomeNotifier extends _$HomeNotifier {
     required DeleteScope scope,
     DateTime? referenceDate,
   }) async {
-    final previousTasks = List<Task>.from(state.value ?? []);
     try {
       await _deleteTask.call(
         DeleteTaskData(
@@ -202,7 +204,6 @@ class HomeNotifier extends _$HomeNotifier {
       state = AsyncData(tasks);
     } catch (e, st) {
       ref.read(errorHandlerProvider).handle(e, st);
-      state = AsyncData(previousTasks);
     }
   }
 
@@ -217,27 +218,35 @@ class HomeNotifier extends _$HomeNotifier {
     required Task task,
     required DateTime date,
   }) async {
-    List<Task> tasks = List<Task>.from(state.value ?? []);
-    int index = tasks.indexWhere((currentTask) => currentTask.id == task.id);
-    if (index == -1) return;
-    tasks[index] = task.copyWith(completed: !task.completed);
-    state = AsyncData(tasks);
+    // The toggle endpoint flips the state: a second request would undo the
+    // first one, in whichever order they arrive.
+    final key = (task.id, date);
+    if (!_togglesInFlight.add(key)) return;
+
+    _patchTask(task.id, (t) => t.copyWith(completed: !task.completed));
     try {
-      Task updatedTask = await _toggleTask.call(
+      final updatedTask = await _toggleTask.call(
         ToggleTaskData(
           taskId: task.id,
           completedAt: date,
         ),
       );
-      if (updatedTask.completed != tasks[index].completed) {
-        tasks[index] = task.copyWith(completed: updatedTask.completed);
-        state = AsyncData(tasks);
+      if (!ref.mounted) return;
+      if (_isShowing(date)) {
+        _patchTask(
+          task.id,
+          (t) => t.copyWith(completed: updatedTask.completed),
+        );
       }
     } catch (e, st) {
+      if (!ref.mounted) return;
       // Revert optimistic update
-      tasks[index] = task;
-      state = AsyncData(tasks);
+      if (_isShowing(date)) {
+        _patchTask(task.id, (t) => t.copyWith(completed: task.completed));
+      }
       ref.read(errorHandlerProvider).handle(e, st);
+    } finally {
+      _togglesInFlight.remove(key);
     }
   }
 
@@ -363,11 +372,25 @@ class HomeNotifier extends _$HomeNotifier {
 
   bool _isShowing(DateTime date) => ref.read(selectedDateProvider) == date;
 
-  void _replaceTask(Task task) {
+  /// Undoes a reorder without touching other changes made meanwhile.
+  void _moveBack(String taskId, int index, int priority) {
     final tasks = List<Task>.from(state.value ?? []);
-    final index = tasks.indexWhere((t) => t.id == task.id);
+    final current = tasks.indexWhere((t) => t.id == taskId);
+    if (current == -1) return;
+    final task = tasks.removeAt(current).copyWith(priority: priority);
+    tasks.insert(index.clamp(0, tasks.length), task);
+    state = AsyncData(tasks);
+  }
+
+  void _replaceTask(Task task) => _patchTask(task.id, (_) => task);
+
+  /// Changes a task in the current list: after an await, a list read earlier
+  /// may have lost changes made meanwhile.
+  void _patchTask(String taskId, Task Function(Task task) change) {
+    final tasks = List<Task>.from(state.value ?? []);
+    final index = tasks.indexWhere((t) => t.id == taskId);
     if (index != -1) {
-      tasks[index] = task;
+      tasks[index] = change(tasks[index]);
       state = AsyncData(tasks);
     }
   }
@@ -397,6 +420,7 @@ class HomeNotifier extends _$HomeNotifier {
       newPriority = 100;
     }
 
+    final selectedDate = ref.read(selectedDateProvider);
     final updatedTask = movedTask.copyWith(priority: newPriority);
     tasks[newIndex] = updatedTask;
 
@@ -410,13 +434,15 @@ class HomeNotifier extends _$HomeNotifier {
           startDate: updatedTask.startDate,
           frequency: updatedTask.taskFrequency,
           priority: newPriority,
-          date: ref.read(selectedDateProvider),
+          date: selectedDate,
         ),
       );
     } catch (e, st) {
       log('Exception: $e stacktrace: $st');
       ref.read(errorHandlerProvider).handle(e, st);
-      state = AsyncData(previousTasks);
+      if (_isShowing(selectedDate)) {
+        _moveBack(updatedTask.id, oldIndex, movedTask.priority);
+      }
     }
   }
 }

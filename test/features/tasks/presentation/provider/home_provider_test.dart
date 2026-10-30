@@ -7,6 +7,7 @@ import 'package:auto_admin_app/features/tasks/data/datasources/data_source.dart'
 import 'package:auto_admin_app/features/tasks/data/enums/task_frequency.dart';
 import 'package:auto_admin_app/features/tasks/domain/entities/sub_task.dart';
 import 'package:auto_admin_app/features/tasks/domain/entities/task.dart';
+import 'package:auto_admin_app/features/tasks/domain/enums/delete_scope.dart';
 import 'package:auto_admin_app/features/tasks/domain/repository/tasks_repository.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/delete_task_data.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/new_task_data.dart';
@@ -54,6 +55,9 @@ class _FakeTasksRepository extends TasksRepository {
   final List<Task> tasks;
   final List<_SyncCall> syncCalls = [];
   final List<UpdateTaskData> edits = [];
+  final List<Completer<Task>> toggles = [];
+  Completer<void>? deleteResponse;
+  Object? editError;
 
   /// Overrides the response of getAllTasks, to control when it arrives.
   Future<List<Task>> Function(DateTime date)? onGetAllTasks;
@@ -82,15 +86,20 @@ class _FakeTasksRepository extends TasksRepository {
       throw UnimplementedError();
   @override
   Future<void> deleteTask(DeleteTaskData deleteTaskData) =>
-      throw UnimplementedError();
+      deleteResponse?.future ?? Future.value();
   @override
   Future<Task> editTask(UpdateTaskData updateTaskData) async {
     edits.add(updateTaskData);
+    if (editError != null) throw editError!;
     return _task({}, id: updateTaskData.taskId);
   }
 
   @override
-  Future<Task> toggleTask(ToggleTaskData data) => throw UnimplementedError();
+  Future<Task> toggleTask(ToggleTaskData data) {
+    final response = Completer<Task>();
+    toggles.add(response);
+    return response.future;
+  }
 }
 
 class _FakeAuthNotifier extends AuthNotifier {
@@ -503,6 +512,91 @@ void main() {
       signIn('user-2');
       final tasks = await container.read(homeProvider.future);
       expect(tasks.single.id, 'other-user-task');
+    });
+  });
+
+  group('changes that overlap', () {
+    Task byId(String id) =>
+        container.read(homeProvider).value!.firstWhere((t) => t.id == id);
+
+    void toggle(String id) {
+      container.read(homeProvider.notifier).toggleTask(
+            task: byId(id),
+            date: container.read(selectedDateProvider),
+          );
+    }
+
+    setUp(() async {
+      repository.tasks
+        ..clear()
+        ..addAll([
+          _task({}, id: 'a', priority: 100),
+          _task({}, id: 'b', priority: 200),
+          _task({}, id: 'c', priority: 300),
+        ]);
+      await container
+          .read(homeProvider.notifier)
+          .refreshTasks(container.read(selectedDateProvider));
+    });
+
+    test('a failed toggle only reverts its own task', () async {
+      toggle('a');
+      toggle('b');
+      repository.toggles.first.completeError(Exception('failed'));
+      await settle();
+
+      expect(byId('a').completed, isFalse);
+      expect(byId('b').completed, isTrue);
+    });
+
+    test('a slow toggle response does not undo a later reorder', () async {
+      toggle('a');
+      await container
+          .read(homeProvider.notifier)
+          .updateTaskPriorities(oldIndex: 2, newIndex: 0);
+      repository.toggles.single.complete(_task({}, id: 'a'));
+      await settle();
+
+      expect(
+        container.read(homeProvider).value!.map((t) => t.id),
+        ['c', 'a', 'b'],
+      );
+    });
+
+    test('a second tap during a toggle request is ignored', () async {
+      toggle('a');
+      toggle('a');
+      expect(repository.toggles, hasLength(1));
+      expect(byId('a').completed, isTrue);
+    });
+
+    test('a failed delete does not undo a toggle made meanwhile', () async {
+      repository.deleteResponse = Completer<void>();
+      final delete = container
+          .read(homeProvider.notifier)
+          .deleteTask(taskId: 'c', scope: DeleteScope.all);
+      toggle('a');
+      repository.deleteResponse!.completeError(Exception('failed'));
+      await delete;
+
+      expect(byId('a').completed, isTrue);
+      expect(byId('c').id, 'c');
+    });
+
+    test('a failed reorder restores the order and keeps other changes',
+        () async {
+      repository.editError = Exception('failed');
+      toggle('b');
+      await container
+          .read(homeProvider.notifier)
+          .updateTaskPriorities(oldIndex: 0, newIndex: 2);
+
+      expect(
+        container.read(homeProvider).value!.map((t) => t.id),
+        ['a', 'b', 'c'],
+      );
+      expect(byId('a').priority, 100);
+      expect(byId('b').completed, isTrue);
     });
   });
 }
