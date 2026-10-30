@@ -32,9 +32,10 @@ Task _task(Map<String, bool> subtasks) => Task(
 
 class _SyncCall {
   final Map<String, bool> payload;
+  final DateTime date;
   final Completer<Task> _response = Completer<Task>();
 
-  _SyncCall(this.payload);
+  _SyncCall(this.payload, this.date);
 
   void succeed() => _response.complete(_task(payload));
   void fail() => _response.completeError(Exception('sync failed'));
@@ -57,7 +58,7 @@ class _FakeTasksRepository extends TasksRepository {
   }) {
     final call = _SyncCall({
       for (final s in subtasks) s.sourceSubTaskId: s.completed,
-    });
+    }, date);
     syncCalls.add(call);
     return call._response.future;
   }
@@ -177,6 +178,64 @@ void main() {
       repository.syncCalls.first.succeed();
       await Future<void>.delayed(_debounce);
       repository.syncCalls.last.fail();
+      await settle();
+      expect(shownSubtasks(), {'s1': true, 's2': false});
+    });
+  });
+
+  group('toggleSubtask when the selected day changes', () {
+    late DateTime day1;
+    late DateTime day2;
+
+    Future<void> selectDay(DateTime day) async {
+      container.read(selectedDateProvider.notifier).selectDate(day);
+      await settle();
+    }
+
+    setUp(() {
+      day1 = container.read(selectedDateProvider);
+      day2 = day1.add(const Duration(days: 1));
+    });
+
+    test('sends what was toggled, with the day it was toggled on', () async {
+      tap('s1');
+      await selectDay(day2);
+      await Future<void>.delayed(_debounce);
+
+      expect(repository.syncCalls.single.date, day1);
+      expect(repository.syncCalls.single.payload, {'s1': true, 's2': false});
+    });
+
+    test('a response does not replace the task of the day now shown', () async {
+      tap('s1');
+      repository.tasks[0] = _task({'s1': false, 's2': true});
+      await selectDay(day2);
+      await Future<void>.delayed(_debounce);
+
+      repository.syncCalls.single.succeed();
+      await settle();
+      expect(shownSubtasks(), {'s1': false, 's2': true});
+    });
+
+    test('a failure does not replace the task of the day now shown', () async {
+      tap('s1');
+      repository.tasks[0] = _task({'s1': false, 's2': true});
+      await selectDay(day2);
+      await Future<void>.delayed(_debounce);
+
+      repository.syncCalls.single.fail();
+      await settle();
+      expect(shownSubtasks(), {'s1': false, 's2': true});
+    });
+
+    test('going back to the day keeps the toggles not yet saved', () async {
+      tap('s1');
+      await selectDay(day2);
+      await selectDay(day1);
+      expect(shownSubtasks(), {'s1': true, 's2': false});
+
+      await Future<void>.delayed(_debounce);
+      repository.syncCalls.single.succeed();
       await settle();
       expect(shownSubtasks(), {'s1': true, 's2': false});
     });

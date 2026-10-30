@@ -41,7 +41,23 @@ class HomeNotifier extends _$HomeNotifier {
   }
 
   Future<List<Task>> getTasks(DateTime date) async {
-    return _getAllTasks.call(date);
+    final tasks = await _getAllTasks.call(date);
+    return tasks.map((task) => _withPendingToggles(task, date)).toList();
+  }
+
+  /// Toggles not saved yet are newer than what the backend just returned.
+  Task _withPendingToggles(Task task, DateTime date) {
+    final sync = _subtaskSyncs[task.id];
+    final current = task.subtasks ?? [];
+    if (sync == null || sync.date != date || current.isEmpty) return task;
+
+    final subtasks = current
+        .map((s) => s.copyWith(completed: sync.subtasks[s.id] ?? s.completed))
+        .toList();
+    return task.copyWith(
+      subtasks: subtasks,
+      completed: subtasks.every((s) => s.completed),
+    );
   }
 
   Future<void> refreshTasks(DateTime date) async {
@@ -148,6 +164,8 @@ class HomeNotifier extends _$HomeNotifier {
       );
       List<Task> tasks = List<Task>.from(state.value ?? []);
       tasks.removeWhere((task) => task.id == taskId);
+      // Nothing left to sync: the request would fail with a 404.
+      _subtaskSyncs.remove(taskId)?.timer?.cancel();
       state = AsyncData(tasks);
     } catch (e, st) {
       ref.read(errorHandlerProvider).handle(e, st);
@@ -218,19 +236,21 @@ class HomeNotifier extends _$HomeNotifier {
     // 2. Remember the confirmed state for revert (only when a sync starts)
     final sync = _subtaskSyncs.putIfAbsent(
       task.id,
-      () => _SubtaskSync(confirmedTask: currentTask),
+      () => _SubtaskSync(confirmedTask: currentTask, date: date),
     );
+    sync.date = date;
+    sync.subtasks = {for (final s in optimisticSubtasks) s.id: s.completed};
     sync.hasUnsentChanges = true;
 
     // 3. Reset this task's debounce timer — send the full list after user stops
     sync.timer?.cancel();
     sync.timer = Timer(
       const Duration(seconds: 1),
-      () => _syncSubtasksToBackend(task.id, date),
+      () => _syncSubtasksToBackend(task.id),
     );
   }
 
-  Future<void> _syncSubtasksToBackend(String taskId, DateTime date) async {
+  Future<void> _syncSubtasksToBackend(String taskId) async {
     final sync = _subtaskSyncs[taskId];
     if (sync == null) return;
     sync.timer = null;
@@ -239,20 +259,10 @@ class HomeNotifier extends _$HomeNotifier {
     // changes made in the meantime, so requests cannot arrive out of order.
     if (sync.inFlight) return;
 
-    // Get the current optimistic state of the task's subtasks
-    final tasks = state.value ?? [];
-    final taskIndex = tasks.indexWhere((t) => t.id == taskId);
-    if (taskIndex == -1) {
-      _subtaskSyncs.remove(taskId);
-      return;
-    }
-
-    final subtaskStates = tasks[taskIndex]
-        .subtasks!
-        .map((s) => SubtaskState(
-              sourceSubTaskId: s.id,
-              completed: s.completed,
-            ))
+    // Send what the user toggled, not the state shown now: it may be another
+    // day's by this time.
+    final subtaskStates = sync.subtasks.entries
+        .map((s) => SubtaskState(sourceSubTaskId: s.key, completed: s.value))
         .toList();
 
     sync.inFlight = true;
@@ -262,7 +272,7 @@ class HomeNotifier extends _$HomeNotifier {
       final updatedTask = await ref.read(taskRepositoryProvider).syncSubtasks(
             taskId: taskId,
             subtasks: subtaskStates,
-            date: date,
+            date: sync.date,
           );
       sync.inFlight = false;
       sync.confirmedTask = updatedTask;
@@ -271,7 +281,7 @@ class HomeNotifier extends _$HomeNotifier {
       // meanwhile: that response is already outdated.
       if (!sync.hasUnsentChanges) {
         _subtaskSyncs.remove(taskId);
-        _replaceTask(updatedTask);
+        if (_isShowing(sync.date)) _replaceTask(updatedTask);
       }
     } catch (e, st) {
       sync.inFlight = false;
@@ -280,7 +290,7 @@ class HomeNotifier extends _$HomeNotifier {
       // their sync carries the full list and retries this one too.
       if (!sync.hasUnsentChanges) {
         _subtaskSyncs.remove(taskId);
-        _replaceTask(sync.confirmedTask);
+        if (_isShowing(sync.date)) _replaceTask(sync.confirmedTask);
         ref.read(errorHandlerProvider).handle(e, st);
       }
     }
@@ -288,9 +298,11 @@ class HomeNotifier extends _$HomeNotifier {
     // The debounce timer expired during the request, so nothing else will
     // send these changes.
     if (sync.hasUnsentChanges && sync.timer == null) {
-      await _syncSubtasksToBackend(taskId, date);
+      await _syncSubtasksToBackend(taskId);
     }
   }
+
+  bool _isShowing(DateTime date) => ref.read(selectedDateProvider) == date;
 
   void _replaceTask(Task task) {
     final tasks = List<Task>.from(state.value ?? []);
@@ -358,13 +370,20 @@ class HomeNotifier extends _$HomeNotifier {
 class _SubtaskSync {
   /// Last state known to be saved on the backend, for revert on error.
   Task confirmedTask;
+
+  /// Day the toggles belong to.
+  DateTime date;
+
+  /// Latest completion state chosen by the user, by subtask ID.
+  Map<String, bool> subtasks = {};
+
   Timer? timer;
   bool inFlight = false;
 
   /// Toggles not yet included in a request.
   bool hasUnsentChanges = false;
 
-  _SubtaskSync({required this.confirmedTask});
+  _SubtaskSync({required this.confirmedTask, required this.date});
 }
 
 @riverpod
