@@ -1,3 +1,5 @@
+import 'package:auto_admin_app/core/errors/app_error.dart';
+import 'package:auto_admin_app/core/errors/app_exception.dart';
 import 'package:auto_admin_app/features/tasks/data/enums/task_frequency.dart';
 import 'package:auto_admin_app/features/tasks/domain/entities/task.dart';
 import 'package:auto_admin_app/features/tasks/presentation/pages/home_page.dart';
@@ -57,6 +59,53 @@ void main() {
       ),
     );
   }
+
+  group('HomePage states', () {
+    testWidgets('shows an empty state when the day has no tasks',
+        (tester) async {
+      await tester.pumpWidget(
+        buildTestableHomePage(theme: AppTheme.lightTheme),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('No hay tareas para este día'), findsOneWidget);
+    });
+
+    testWidgets('shows the message and a retry when loading fails',
+        (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            homeProvider.overrideWith(_FailingHomeNotifier.new),
+            selectedDateProvider.overrideWithValue(today),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.lightTheme,
+            home: const HomePage(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Sin conexión'), findsOneWidget);
+      expect(find.text('Reintentar'), findsOneWidget);
+    });
+
+    testWidgets('names today in the title and keeps a narrow layout',
+        (tester) async {
+      tester.view.physicalSize = const Size(320, 640);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        buildTestableHomePage(theme: AppTheme.lightTheme, tasks: mockTasks),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Hoy'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  });
 
   group('HomePage renders without errors', () {
     testWidgets('renders correctly with light theme', (tester) async {
@@ -208,6 +257,15 @@ void main() {
       expect(constraints?.minHeight, greaterThanOrEqualTo(48));
     });
   });
+}
+
+class _FailingHomeNotifier extends HomeNotifier {
+  @override
+  Future<List<Task>> build() async {
+    throw const AppException(
+      AppError(message: 'Sin conexión', type: AppErrorType.network),
+    );
+  }
 }
 
 /// Mock HomeNotifier that returns a predefined list of tasks
