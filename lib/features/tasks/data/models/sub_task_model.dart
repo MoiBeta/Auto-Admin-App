@@ -1,5 +1,3 @@
-import 'package:auto_admin_app/features/tasks/data/models/sub_task_instance.dart';
-import 'package:auto_admin_app/features/tasks/data/models/sub_task_template.dart';
 import 'package:auto_admin_app/features/tasks/domain/entities/sub_task.dart';
 
 class SubTaskModel {
@@ -34,15 +32,6 @@ class SubTaskModel {
       id: id,
       title: title,
       completed: completed,
-    );
-  }
-
-  factory SubTaskModel.fromTemplateAndInstance(
-      SubTaskTemplate template, SubTaskInstance instance) {
-    return SubTaskModel(
-      id: instance.id,
-      title: template.title,
-      completed: instance.completed,
     );
   }
 }

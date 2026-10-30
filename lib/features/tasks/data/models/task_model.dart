@@ -1,7 +1,5 @@
 import 'package:auto_admin_app/features/tasks/data/enums/task_frequency.dart';
 import 'package:auto_admin_app/features/tasks/data/models/sub_task_model.dart';
-import 'package:auto_admin_app/features/tasks/data/models/task_instance.dart';
-import 'package:auto_admin_app/features/tasks/data/models/task_template.dart';
 import 'package:auto_admin_app/features/tasks/domain/entities/task.dart';
 
 class TaskModel {
@@ -48,21 +46,6 @@ class TaskModel {
         reminderDate: reminderDate,
         habitStartDate: habitStartDate,
       );
-
-  factory TaskModel.fromTemplateAndInstance(
-      TaskTemplate template, TaskInstance instance) {
-    return TaskModel(
-      id: instance.id,
-      userId: instance.userId,
-      title: template.title,
-      description: template.description,
-      subtasks: instance.subtasks,
-      startDate: instance.date,
-      completed: instance.completed,
-      taskFrequency: template.frequency,
-      priority: template.priority,
-    );
-  }
 
   factory TaskModel.fromJson(Map<String, dynamic> json) => TaskModel(
         id: json['id'],
