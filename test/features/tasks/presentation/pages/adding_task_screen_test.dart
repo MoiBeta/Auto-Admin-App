@@ -156,12 +156,22 @@ class _FakeHomeNotifier extends HomeNotifier {
   }
 
   @override
-  Future<bool> createTask({
+  Future<Task?> createTask({
     required String title,
     required DateTime startDate,
     required TaskFrequency frequency,
     DateTime? reminderDate,
     List<String>? subtasks,
   }) async =>
-      saves;
+      saves
+          ? Task(
+              id: 'new',
+              userId: 'u',
+              title: title,
+              startDate: startDate,
+              completed: false,
+              taskFrequency: frequency,
+              priority: 100,
+            )
+          : null;
 }

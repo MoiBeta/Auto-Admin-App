@@ -71,15 +71,27 @@ class AddingTaskScreen extends HookConsumerWidget {
         );
       }
 
+      final messenger = ScaffoldMessenger.of(context);
       final bool saved;
       if (task == null) {
-        saved = await ref.read(homeProvider.notifier).createTask(
+        final created = await ref.read(homeProvider.notifier).createTask(
               title: titleEditingController.text,
               frequency: taskFrequency.value,
               startDate: selectedDate.value,
               reminderDate: reminderDateTime,
               subtasks: subtasks.value,
             );
+        saved = created != null;
+        final home = ref.read(homeProvider);
+        if (saved &&
+            !home.hasError &&
+            home.value?.any((t) => t.id == created.id) == false) {
+          final day =
+              DateFormat("d 'de' MMMM", 'es').format(selectedDate.value);
+          messenger.showSnackBar(
+            SnackBar(content: Text('Tarea agregada a partir del $day')),
+          );
+        }
       } else {
         saved = await ref.read(homeProvider.notifier).editTask(
               title: titleEditingController.text,

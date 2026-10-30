@@ -106,8 +106,8 @@ class HomeNotifier extends _$HomeNotifier {
     }
   }
 
-  /// Returns whether the task was created.
-  Future<bool> createTask({
+  /// Returns the new task, or null if it could not be created.
+  Future<Task?> createTask({
     required String title,
     required DateTime startDate,
     required TaskFrequency frequency,
@@ -130,13 +130,13 @@ class HomeNotifier extends _$HomeNotifier {
           timezone: reminderDate != null ? await deviceTimezone() : null,
         ),
       );
-      tasks.add(newTask);
-      state = AsyncData(tasks);
-      return true;
+      // Only the backend knows whether its schedule includes the selected day.
+      await refreshTasks(ref.read(selectedDateProvider));
+      return newTask;
     } catch (e, st) {
       ref.read(errorHandlerProvider).handle(e, st);
       state = AsyncData(tasks);
-      return false;
+      return null;
     }
   }
 

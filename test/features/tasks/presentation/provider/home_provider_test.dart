@@ -82,8 +82,8 @@ class _FakeTasksRepository extends TasksRepository {
   }
 
   @override
-  Future<Task> createNewTask(NewTaskData newTaskData) =>
-      throw UnimplementedError();
+  Future<Task> createNewTask(NewTaskData newTaskData) async =>
+      _task({}, id: 'new');
   @override
   Future<void> deleteTask(DeleteTaskData deleteTaskData) =>
       deleteResponse?.future ?? Future.value();
@@ -636,6 +636,28 @@ void main() {
       clock.current = DateTime(2026, 11, 1);
       dates.read(todayProvider.notifier).refresh();
       expect(dates.read(selectedDateProvider), DateTime(2026, 10, 29));
+    });
+  });
+
+  group('createTask', () {
+    Future<Task?> create() => container.read(homeProvider.notifier).createTask(
+          title: 'new',
+          startDate: DateTime(2026, 12, 1),
+          frequency: TaskFrequency.weekly,
+        );
+
+    test('does not list a task the backend does not schedule that day',
+        () async {
+      final created = await create();
+      expect(created?.id, 'new');
+      expect(currentTask().id, 't');
+      expect(container.read(homeProvider).value, hasLength(1));
+    });
+
+    test('lists a task the backend schedules that day', () async {
+      repository.tasks.add(_task({}, id: 'new'));
+      await create();
+      expect(container.read(homeProvider).value, hasLength(2));
     });
   });
 }
