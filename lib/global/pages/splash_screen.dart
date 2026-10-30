@@ -1,6 +1,8 @@
 import 'package:auto_admin_app/core/constants/routes.dart';
+import 'package:auto_admin_app/core/errors/error_handler.dart';
 import 'package:auto_admin_app/features/auth/injection/auth_providers.dart';
 import 'package:auto_admin_app/features/auth/presentation/providers/auth_provider.dart';
+import 'package:auto_admin_app/global/theme/spacing.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -23,7 +25,25 @@ class SplashScreen extends ConsumerWidget {
 
     if (authState.hasError) {
       return Scaffold(
-        body: Center(child: Text('Error: ${authState.value?.errorMessage}')),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(Spacing.lg),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  ErrorHandler.extractAppError(authState.error!).message,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: Spacing.md),
+                FilledButton(
+                  onPressed: () => ref.invalidate(authNotifierProvider),
+                  child: const Text('Reintentar'),
+                ),
+              ],
+            ),
+          ),
+        ),
       );
     }
 

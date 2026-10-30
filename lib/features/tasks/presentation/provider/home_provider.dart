@@ -25,7 +25,10 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'home_provider.g.dart';
 
-@Riverpod(keepAlive: true)
+// The page offers a retry: don't keep the user waiting on automatic ones.
+Duration? _noRetry(int retryCount, Object error) => null;
+
+@Riverpod(keepAlive: true, retry: _noRetry)
 class HomeNotifier extends _$HomeNotifier {
   late final CreateNewTask _createNewTask = ref.read(createNewTaskProvider);
   late final DeleteTask _deleteTask = ref.read(deleteTaskProvider);

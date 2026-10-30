@@ -93,5 +93,8 @@ final Provider<ChangePassword> changePasswordUseCaseProvider =
     Provider<ChangePassword>(
         (ref) => ChangePassword(ref.watch(authRepositoryProvider)));
 
-final authNotifierProvider =
-    AsyncNotifierProvider<AuthNotifier, LoginState>(() => AuthNotifier());
+final authNotifierProvider = AsyncNotifierProvider<AuthNotifier, LoginState>(
+  () => AuthNotifier(),
+  // The splash offers a retry: don't keep the user waiting on automatic ones.
+  retry: (_, __) => null,
+);

@@ -28,13 +28,18 @@ class AuthRemoteDataSource extends AuthDataSource {
 
   @override
   Future<AuthCredentialModel?> getAuthState() async {
+    if (!await tokenManager.hasAccessToken()) return null;
     try {
       final response = await client.get(
         '/auth/me',
       );
       return AuthCredentialModel.fromJson(response.data);
-    } catch (e) {
-      return null;
+    } on DioException catch (e) {
+      // Only a rejected session means "logged out": a network failure says
+      // nothing about it, and the tokens are still valid.
+      final status = e.response?.statusCode;
+      if (status == 401 || status == 403) return null;
+      rethrow;
     }
   }
 
