@@ -34,6 +34,10 @@ class HomeNotifier extends _$HomeNotifier {
   /// another task or day does not cancel a pending sync.
   final Map<(String, DateTime), _SubtaskSync> _subtaskSyncs = {};
 
+  /// Identifies the latest load, so a slower older one cannot overwrite it.
+  int _latestLoad = 0;
+  bool _isLoadingTasks = false;
+
   @override
   Future<List<Task>> build() async {
     listenDateChanges();
@@ -61,11 +65,17 @@ class HomeNotifier extends _$HomeNotifier {
   }
 
   Future<void> refreshTasks(DateTime date) async {
+    final load = ++_latestLoad;
+    _isLoadingTasks = true;
     state = const AsyncLoading();
     try {
       final tasks = await getTasks(date);
+      if (load != _latestLoad) return;
+      _isLoadingTasks = false;
       state = AsyncData(tasks);
     } catch (e, st) {
+      if (load != _latestLoad) return;
+      _isLoadingTasks = false;
       ref.read(errorHandlerProvider).handle(e, st);
       state = AsyncError(e, st);
     }
@@ -134,12 +144,12 @@ class HomeNotifier extends _$HomeNotifier {
       // A new start day or frequency can move the task to other days: reload
       // the list instead of patching it.
       if (newStartDate != null || previous?.taskFrequency != frequency) {
-        state = AsyncData(await getTasks(selectedDate));
+        await refreshTasks(ref.read(selectedDateProvider));
         return;
       }
       List<Task> tasks = List<Task>.from(state.value ?? []);
       int index = tasks.indexWhere((task) => task.id == taskId);
-      if (index != -1) tasks[index] = updatedTask;
+      if (index != -1 && _isShowing(selectedDate)) tasks[index] = updatedTask;
       state = AsyncData(tasks);
     } catch (e, st) {
       ref.read(errorHandlerProvider).handle(e, st);
@@ -284,7 +294,14 @@ class HomeNotifier extends _$HomeNotifier {
       // meanwhile: that response is already outdated.
       if (!sync.hasUnsentChanges) {
         _subtaskSyncs.remove((taskId, date));
-        if (_isShowing(date)) _replaceTask(updatedTask);
+        if (_isShowing(date)) {
+          // A load started before this save may bring the old state.
+          if (_isLoadingTasks) {
+            unawaited(refreshTasks(date));
+          } else {
+            _replaceTask(updatedTask);
+          }
+        }
       }
     } catch (e, st) {
       sync.inFlight = false;

@@ -51,10 +51,14 @@ class _FakeTasksRepository extends TasksRepository {
   final List<_SyncCall> syncCalls = [];
   final List<UpdateTaskData> edits = [];
 
+  /// Overrides the response of getAllTasks, to control when it arrives.
+  Future<List<Task>> Function(DateTime date)? onGetAllTasks;
+
   _FakeTasksRepository(this.tasks);
 
   @override
-  Future<List<Task>> getAllTasks(DateTime date) async => tasks;
+  Future<List<Task>> getAllTasks(DateTime date) async =>
+      onGetAllTasks?.call(date) ?? tasks;
 
   @override
   Future<Task> syncSubtasks({
@@ -328,6 +332,60 @@ void main() {
           .updateTaskPriorities(oldIndex: 2, newIndex: 0);
       expect(shownOrder(), ['c', 'a', 'b']);
       expect(repository.edits.single.priority, 0);
+    });
+  });
+
+  group('refreshTasks', () {
+    test('ignores the response of a day no longer selected', () async {
+      final day1 = container.read(selectedDateProvider);
+      final day2 = day1.add(const Duration(days: 1));
+      final day3 = day1.add(const Duration(days: 2));
+      final slow = Completer<List<Task>>();
+      repository.onGetAllTasks = (date) => date == day2
+          ? slow.future
+          : Future.value([
+              _task({'s1': true})
+            ]);
+
+      container.read(selectedDateProvider.notifier).selectDate(day2);
+      await settle();
+      container.read(selectedDateProvider.notifier).selectDate(day3);
+      await settle();
+      slow.complete([
+        _task({'s1': false})
+      ]);
+      await settle();
+
+      expect(shownSubtasks(), {'s1': true});
+    });
+
+    test('a load started before a save finished is repeated', () async {
+      final day1 = container.read(selectedDateProvider);
+      final day2 = day1.add(const Duration(days: 1));
+      tap('s1');
+      await Future<void>.delayed(_debounce);
+      container.read(selectedDateProvider.notifier).selectDate(day2);
+      await settle();
+
+      final outdated = Completer<List<Task>>();
+      final fresh = Completer<List<Task>>();
+      final responses = [outdated, fresh];
+      repository.onGetAllTasks = (_) => responses.removeAt(0).future;
+      container.read(selectedDateProvider.notifier).selectDate(day1);
+      await settle();
+
+      repository.syncCalls.single.succeed();
+      await settle();
+      expect(responses, isEmpty);
+
+      outdated.complete([
+        _task({'s1': false, 's2': false})
+      ]);
+      fresh.complete([
+        _task({'s1': true, 's2': false})
+      ]);
+      await settle();
+      expect(shownSubtasks(), {'s1': true, 's2': false});
     });
   });
 }
