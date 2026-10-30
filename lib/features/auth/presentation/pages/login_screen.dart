@@ -3,16 +3,20 @@ import 'package:auto_admin_app/features/auth/injection/auth_providers.dart';
 import 'package:auto_admin_app/global/theme/spacing.dart';
 import 'package:auto_admin_app/global/widgets/loading_button.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:lottie/lottie.dart';
 
-class LoginScreen extends ConsumerWidget {
+class LoginScreen extends HookConsumerWidget {
   const LoginScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final authNotifier = ref.read(authNotifierProvider.notifier);
+    // Local to the screen, so the password does not outlive it.
+    final emailController = useTextEditingController();
+    final passwordController = useTextEditingController();
+
     final loginState = ref.watch(authNotifierProvider).value;
     final isLoading = loginState?.isLoading ?? false;
 
@@ -35,13 +39,13 @@ class LoginScreen extends ConsumerWidget {
               child: Lottie.asset('assets/animations/task-login.json'),
             ),
             TextFormField(
-              controller: authNotifier.emailController,
+              controller: emailController,
               keyboardType: TextInputType.emailAddress,
               decoration: const InputDecoration(hintText: 'Correo'),
             ),
             const SizedBox(height: Spacing.formFieldSpacing),
             TextFormField(
-              controller: authNotifier.passwordController,
+              controller: passwordController,
               obscureText: true,
               decoration: const InputDecoration(hintText: 'Contraseña'),
             ),
@@ -49,7 +53,10 @@ class LoginScreen extends ConsumerWidget {
             LoadingButton(
               isLoading: isLoading,
               onPressed: () async {
-                await ref.read(authNotifierProvider.notifier).login();
+                await ref.read(authNotifierProvider.notifier).login(
+                      email: emailController.text,
+                      password: passwordController.text,
+                    );
               },
               label: 'Iniciar sesión',
             ),

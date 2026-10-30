@@ -16,7 +16,6 @@ import 'package:auto_admin_app/features/auth/domain/usecases/resend_confirmation
 import 'package:auto_admin_app/features/auth/injection/auth_providers.dart';
 import 'package:auto_admin_app/features/notifications/notification_providers.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class AuthNotifier extends AsyncNotifier<LoginState> {
@@ -27,9 +26,6 @@ class AuthNotifier extends AsyncNotifier<LoginState> {
   late ResendConfirmationCode _resendConfirmationCode;
   late AuthLogout _authLogout;
   late ChangePassword _changePassword;
-
-  TextEditingController emailController = TextEditingController();
-  TextEditingController passwordController = TextEditingController();
 
   StreamSubscription<String>? _fcmTokenRefreshSub;
 
@@ -56,7 +52,7 @@ class AuthNotifier extends AsyncNotifier<LoginState> {
     );
   }
 
-  Future<void> login() async {
+  Future<void> login({required String email, required String password}) async {
     state = AsyncData(
       state.value!.copyWith(
         isLoading: true,
@@ -64,8 +60,8 @@ class AuthNotifier extends AsyncNotifier<LoginState> {
     );
     try {
       AuthCredential? authCredential = await _authLogin(LoginData(
-        email: emailController.text,
-        password: passwordController.text,
+        email: email,
+        password: password,
       ));
       state = AsyncData(
         state.value!.copyWith(
