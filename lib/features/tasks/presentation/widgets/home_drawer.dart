@@ -3,33 +3,49 @@ import 'package:auto_admin_app/features/tasks/presentation/provider/home_provide
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class HomeDrawer extends ConsumerStatefulWidget {
+class HomeDrawer extends ConsumerWidget {
   const HomeDrawer({super.key});
 
-  @override
-  ConsumerState<HomeDrawer> createState() => _HomeDrawerState();
-}
+  Future<void> _logout(BuildContext context) async {
+    // Closing the drawer disposes this widget.
+    final container = ProviderScope.containerOf(context, listen: false);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('¿Cerrar sesión?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Cerrar sesión'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
 
-class _HomeDrawerState extends ConsumerState<HomeDrawer> {
-  int _selectedIndex = 0;
+    Navigator.of(context).pop();
+    // While the session is valid: save the pending changes.
+    await container.read(homeProvider.notifier).flushPendingChanges();
+    // The router and the tasks provider react to the session ending.
+    await container.read(authNotifierProvider.notifier).logout();
+  }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
     return NavigationDrawer(
-      selectedIndex: _selectedIndex,
-      onDestinationSelected: (index) async {
-        setState(() => _selectedIndex = index);
-        if (index == 1) {
-          // Logout. Closing the drawer disposes this widget and its ref.
-          final container = ProviderScope.containerOf(context, listen: false);
+      selectedIndex: 0,
+      onDestinationSelected: (index) {
+        if (index == 0) {
           Navigator.of(context).pop();
-          // While the session is valid: save the pending subtask changes.
-          await container.read(homeProvider.notifier).flushPendingChanges();
-          // The router and the tasks provider react to the session ending.
-          await container.read(authNotifierProvider.notifier).logout();
+        } else {
+          _logout(context);
         }
       },
       children: [
