@@ -1,7 +1,5 @@
-import 'package:auto_admin_app/core/constants/routes.dart';
 import 'package:auto_admin_app/features/auth/injection/auth_providers.dart';
 import 'package:auto_admin_app/features/tasks/presentation/provider/home_provider.dart';
-import 'package:auto_admin_app/global/router/router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -30,9 +28,8 @@ class _HomeDrawerState extends ConsumerState<HomeDrawer> {
           Navigator.of(context).pop();
           // While the session is valid: save the pending subtask changes.
           await container.read(homeProvider.notifier).flushSubtaskSyncs();
-          container.read(authNotifierProvider.notifier).logout();
-          container.invalidate(homeProvider);
-          container.read(routerProvider).go(Routes.auth);
+          // The router and the tasks provider react to the session ending.
+          await container.read(authNotifierProvider.notifier).logout();
         }
       },
       children: [

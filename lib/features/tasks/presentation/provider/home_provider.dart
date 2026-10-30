@@ -3,6 +3,7 @@ import 'dart:developer';
 
 import 'package:auto_admin_app/core/errors/error_handler.dart';
 import 'package:auto_admin_app/core/time/device_timezone.dart';
+import 'package:auto_admin_app/features/auth/injection/auth_providers.dart';
 import 'package:auto_admin_app/features/tasks/data/datasources/data_source.dart';
 import 'package:auto_admin_app/features/tasks/data/enums/task_frequency.dart';
 import 'package:auto_admin_app/features/tasks/domain/entities/sub_task.dart';
@@ -19,6 +20,7 @@ import 'package:auto_admin_app/features/tasks/domain/use_cases/toggle_task.dart'
 import 'package:auto_admin_app/features/tasks/domain/use_cases/update_task_template.dart';
 import 'package:auto_admin_app/features/tasks/injection/home_injection.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'home_provider.g.dart';
@@ -41,6 +43,11 @@ class HomeNotifier extends _$HomeNotifier {
 
   @override
   Future<List<Task>> build() async {
+    // This provider outlives the session: start over when the user changes.
+    final userId = ref.watch(
+      authNotifierProvider.select((auth) => auth.value?.credentials?.id),
+    );
+
     listenDateChanges();
 
     final lifecycle = AppLifecycleListener(onHide: flushSubtaskSyncs);
@@ -52,6 +59,7 @@ class HomeNotifier extends _$HomeNotifier {
       _subtaskSyncs.clear();
     });
 
+    if (userId == null) return [];
     return getTasks(ref.read(selectedDateProvider));
   }
 

@@ -1,5 +1,8 @@
 import 'dart:async';
 
+import 'package:auto_admin_app/features/auth/domain/entity/auth_credential.dart';
+import 'package:auto_admin_app/features/auth/injection/auth_providers.dart';
+import 'package:auto_admin_app/features/auth/presentation/providers/auth_provider.dart';
 import 'package:auto_admin_app/features/tasks/data/datasources/data_source.dart';
 import 'package:auto_admin_app/features/tasks/data/enums/task_frequency.dart';
 import 'package:auto_admin_app/features/tasks/domain/entities/sub_task.dart';
@@ -90,6 +93,25 @@ class _FakeTasksRepository extends TasksRepository {
   Future<Task> toggleTask(ToggleTaskData data) => throw UnimplementedError();
 }
 
+class _FakeAuthNotifier extends AuthNotifier {
+  @override
+  Future<LoginState> build() async => _session('user-1');
+
+  void signIn(String? userId) => state = AsyncData(_session(userId));
+
+  LoginState _session(String? userId) => LoginState(
+        isLoading: false,
+        credentials: userId == null
+            ? null
+            : AuthCredential(
+                id: userId,
+                fullName: userId,
+                email: userId,
+                isEmailConfirmed: true,
+              ),
+      );
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -117,10 +139,14 @@ void main() {
       _task({'s1': false, 's2': false}),
     ]);
     container = ProviderContainer(
-      overrides: [taskRepositoryProvider.overrideWithValue(repository)],
+      overrides: [
+        taskRepositoryProvider.overrideWithValue(repository),
+        authNotifierProvider.overrideWith(_FakeAuthNotifier.new),
+      ],
     );
     addTearDown(container.dispose);
     container.listen(homeProvider, (_, __) {});
+    await container.read(authNotifierProvider.future);
     await container.read(homeProvider.future);
   });
 
@@ -451,6 +477,32 @@ void main() {
       await container.read(homeProvider.future);
       await Future<void>.delayed(_debounce);
       expect(repository.syncCalls, isEmpty);
+    });
+  });
+
+  group('session changes', () {
+    void signIn(String? userId) =>
+        (container.read(authNotifierProvider.notifier) as _FakeAuthNotifier)
+            .signIn(userId);
+
+    test('signing out clears the tasks without requesting them', () async {
+      var loads = 0;
+      repository.onGetAllTasks = (_) async {
+        loads++;
+        return repository.tasks;
+      };
+      signIn(null);
+      expect(await container.read(homeProvider.future), isEmpty);
+      expect(loads, 0);
+    });
+
+    test('another user sees their own tasks', () async {
+      signIn(null);
+      await container.read(homeProvider.future);
+      repository.tasks[0] = _task({}, id: 'other-user-task');
+      signIn('user-2');
+      final tasks = await container.read(homeProvider.future);
+      expect(tasks.single.id, 'other-user-task');
     });
   });
 }
