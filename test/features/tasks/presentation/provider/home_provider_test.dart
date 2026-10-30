@@ -228,6 +228,44 @@ void main() {
       expect(shownSubtasks(), {'s1': false, 's2': true});
     });
 
+    test('toggles of the same task on two days are both sent', () async {
+      tap('s1');
+      await selectDay(day2);
+      tap('s2');
+      await Future<void>.delayed(_debounce);
+
+      expect(repository.syncCalls, hasLength(2));
+      expect(repository.syncCalls.first.date, day1);
+      expect(repository.syncCalls.first.payload, {'s1': true, 's2': false});
+      expect(repository.syncCalls.last.date, day2);
+      expect(repository.syncCalls.last.payload, {'s1': false, 's2': true});
+    });
+
+    test('a request in flight for one day does not hold back another day',
+        () async {
+      tap('s1');
+      await Future<void>.delayed(_debounce);
+      await selectDay(day2);
+      tap('s2');
+      await Future<void>.delayed(_debounce);
+
+      expect(repository.syncCalls, hasLength(2));
+      expect(repository.syncCalls.last.date, day2);
+    });
+
+    test('a failure reverts to the confirmed state of its own day', () async {
+      tap('s1');
+      repository.tasks[0] = _task({'s1': false, 's2': true});
+      await selectDay(day2);
+      tap('s1');
+      await Future<void>.delayed(_debounce);
+
+      repository.syncCalls.first.succeed();
+      repository.syncCalls.last.fail();
+      await settle();
+      expect(shownSubtasks(), {'s1': false, 's2': true});
+    });
+
     test('going back to the day keeps the toggles not yet saved', () async {
       tap('s1');
       await selectDay(day2);
