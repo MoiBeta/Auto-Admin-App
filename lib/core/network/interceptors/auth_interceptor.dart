@@ -16,6 +16,9 @@ class AuthInterceptor extends Interceptor {
 
   static const _retriedKey = 'auth_retried';
 
+  /// A 401 here means wrong credentials, not an expired session.
+  static const _credentialPaths = {'/auth/login', '/auth/register'};
+
   AuthInterceptor({
     required this.tokenManager,
     required this.requestDio,
@@ -38,7 +41,9 @@ class AuthInterceptor extends Interceptor {
     final requestOptions = err.requestOptions;
     final alreadyRetried = requestOptions.extra[_retriedKey] == true;
 
-    if (err.response?.statusCode != 401 || alreadyRetried) {
+    if (err.response?.statusCode != 401 ||
+        alreadyRetried ||
+        _credentialPaths.contains(requestOptions.path)) {
       return handler.next(err);
     }
 

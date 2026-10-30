@@ -24,8 +24,7 @@ class ErrorInterceptor extends Interceptor {
     if (err.type == DioExceptionType.connectionError ||
         err.type == DioExceptionType.unknown && err.error is SocketException) {
       return AppError(
-        message:
-            'Sin conexión al servidor. Verifica tu red. ${err.error.toString()}',
+        message: 'Sin conexión al servidor. Verifica tu red.',
         type: AppErrorType.network,
       );
     }
@@ -53,7 +52,9 @@ class ErrorInterceptor extends Interceptor {
             originalError: err,
           ),
         401 => AppError(
-            message: 'Tu sesión ha expirado. Inicia sesión nuevamente.',
+            message: err.requestOptions.path == '/auth/login'
+                ? 'Correo o contraseña incorrectos.'
+                : 'Tu sesión ha expirado. Inicia sesión nuevamente.',
             type: AppErrorType.unauthorized,
             statusCode: statusCode,
             originalError: err,
