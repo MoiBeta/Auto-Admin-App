@@ -11,6 +11,7 @@ import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/toggle_tas
 import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/update_task_data.dart';
 import 'package:auto_admin_app/features/tasks/injection/home_injection.dart';
 import 'package:auto_admin_app/features/tasks/presentation/provider/home_provider.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -90,6 +91,8 @@ class _FakeTasksRepository extends TasksRepository {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   late _FakeTasksRepository repository;
   late ProviderContainer container;
 
@@ -386,6 +389,68 @@ void main() {
       ]);
       await settle();
       expect(shownSubtasks(), {'s1': true, 's2': false});
+    });
+  });
+
+  group('pending subtask syncs', () {
+    test('flushSubtaskSyncs sends them now and waits for the response',
+        () async {
+      tap('s1');
+      var flushed = false;
+      final flush = container
+          .read(homeProvider.notifier)
+          .flushSubtaskSyncs()
+          .then((_) => flushed = true);
+      await settle();
+      expect(repository.syncCalls, hasLength(1));
+      expect(flushed, isFalse);
+
+      repository.syncCalls.single.succeed();
+      await flush;
+      expect(flushed, isTrue);
+    });
+
+    test('flushSubtaskSyncs also waits for changes made during a request',
+        () async {
+      tap('s1');
+      await Future<void>.delayed(_debounce);
+      tap('s2');
+      final flush = container.read(homeProvider.notifier).flushSubtaskSyncs();
+      await settle();
+
+      repository.syncCalls.single.succeed();
+      await settle();
+      expect(repository.syncCalls.last.payload, {'s1': true, 's2': true});
+      repository.syncCalls.last.succeed();
+      await flush;
+    });
+
+    test('are sent when the app goes to the background', () async {
+      tap('s1');
+      final binding = TestWidgetsFlutterBinding.instance;
+      binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      addTearDown(() =>
+          binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed));
+      await settle();
+      expect(repository.syncCalls.single.payload, {'s1': true, 's2': false});
+    });
+
+    test('are sent right away when the selected day changes', () async {
+      tap('s1');
+      container
+          .read(selectedDateProvider.notifier)
+          .selectDate(DateTime(2030, 1, 1));
+      await settle();
+      expect(repository.syncCalls, hasLength(1));
+    });
+
+    test('are dropped when the provider is rebuilt', () async {
+      tap('s1');
+      container.invalidate(homeProvider);
+      await container.read(homeProvider.future);
+      await Future<void>.delayed(_debounce);
+      expect(repository.syncCalls, isEmpty);
     });
   });
 }

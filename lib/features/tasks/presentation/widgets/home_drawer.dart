@@ -22,14 +22,17 @@ class _HomeDrawerState extends ConsumerState<HomeDrawer> {
 
     return NavigationDrawer(
       selectedIndex: _selectedIndex,
-      onDestinationSelected: (index) {
+      onDestinationSelected: (index) async {
         setState(() => _selectedIndex = index);
         if (index == 1) {
-          // Logout
+          // Logout. Closing the drawer disposes this widget and its ref.
+          final container = ProviderScope.containerOf(context, listen: false);
           Navigator.of(context).pop();
-          ref.read(authNotifierProvider.notifier).logout();
-          ref.invalidate(homeProvider);
-          ref.read(routerProvider).go(Routes.auth);
+          // While the session is valid: save the pending subtask changes.
+          await container.read(homeProvider.notifier).flushSubtaskSyncs();
+          container.read(authNotifierProvider.notifier).logout();
+          container.invalidate(homeProvider);
+          container.read(routerProvider).go(Routes.auth);
         }
       },
       children: [

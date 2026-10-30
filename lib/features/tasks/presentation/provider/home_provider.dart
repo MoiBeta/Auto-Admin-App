@@ -18,6 +18,7 @@ import 'package:auto_admin_app/features/tasks/domain/use_cases/inputs/update_tas
 import 'package:auto_admin_app/features/tasks/domain/use_cases/toggle_task.dart';
 import 'package:auto_admin_app/features/tasks/domain/use_cases/update_task_template.dart';
 import 'package:auto_admin_app/features/tasks/injection/home_injection.dart';
+import 'package:flutter/widgets.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'home_provider.g.dart';
@@ -41,6 +42,16 @@ class HomeNotifier extends _$HomeNotifier {
   @override
   Future<List<Task>> build() async {
     listenDateChanges();
+
+    final lifecycle = AppLifecycleListener(onHide: flushSubtaskSyncs);
+    ref.onDispose(() {
+      lifecycle.dispose();
+      for (final sync in _subtaskSyncs.values) {
+        sync.timer?.cancel();
+      }
+      _subtaskSyncs.clear();
+    });
+
     return getTasks(ref.read(selectedDateProvider));
   }
 
@@ -189,6 +200,7 @@ class HomeNotifier extends _$HomeNotifier {
 
   void listenDateChanges() {
     ref.listen(selectedDateProvider, (previous, next) {
+      unawaited(flushSubtaskSyncs());
       refreshTasks(next);
     });
   }
@@ -263,15 +275,32 @@ class HomeNotifier extends _$HomeNotifier {
     );
   }
 
-  Future<void> _syncSubtasksToBackend(String taskId, DateTime date) async {
+  /// Sends the pending subtask changes now, without waiting for the debounce,
+  /// and completes when they are saved or reverted.
+  Future<void> flushSubtaskSyncs() async {
+    await Future.wait(_subtaskSyncs.entries.toList().map((entry) {
+      entry.value.timer?.cancel();
+      return _syncSubtasksToBackend(entry.key.$1, entry.key.$2);
+    }));
+  }
+
+  Future<void> _syncSubtasksToBackend(String taskId, DateTime date) {
     final sync = _subtaskSyncs[(taskId, date)];
-    if (sync == null) return;
+    if (sync == null) return Future.value();
     sync.timer = null;
 
     // Only one request at a time per task: this one's completion sends the
     // changes made in the meantime, so requests cannot arrive out of order.
-    if (sync.inFlight) return;
+    if (sync.inFlight) return sync.request;
 
+    return sync.request = _sendSubtasks(taskId, date, sync);
+  }
+
+  Future<void> _sendSubtasks(
+    String taskId,
+    DateTime date,
+    _SubtaskSync sync,
+  ) async {
     // Send what the user toggled, not the state shown now: it may be another
     // day's by this time.
     final subtaskStates = sync.subtasks.entries
@@ -287,6 +316,7 @@ class HomeNotifier extends _$HomeNotifier {
             subtasks: subtaskStates,
             date: date,
           );
+      if (!ref.mounted) return;
       sync.inFlight = false;
       sync.confirmedTask = updatedTask;
 
@@ -304,6 +334,7 @@ class HomeNotifier extends _$HomeNotifier {
         }
       }
     } catch (e, st) {
+      if (!ref.mounted) return;
       sync.inFlight = false;
 
       // Revert to the confirmed state on failure. With newer changes pending,
@@ -392,6 +423,7 @@ class _SubtaskSync {
 
   Timer? timer;
   bool inFlight = false;
+  Future<void> request = Future.value();
 
   /// Toggles not yet included in a request.
   bool hasUnsentChanges = false;
