@@ -103,7 +103,8 @@ class HomeNotifier extends _$HomeNotifier {
     }
   }
 
-  Future<void> createTask({
+  /// Returns whether the task was created.
+  Future<bool> createTask({
     required String title,
     required DateTime startDate,
     required TaskFrequency frequency,
@@ -128,13 +129,16 @@ class HomeNotifier extends _$HomeNotifier {
       );
       tasks.add(newTask);
       state = AsyncData(tasks);
+      return true;
     } catch (e, st) {
       ref.read(errorHandlerProvider).handle(e, st);
       state = AsyncData(tasks);
+      return false;
     }
   }
 
-  Future<void> editTask({
+  /// Returns whether the task was saved.
+  Future<bool> editTask({
     required String taskId,
     required String title,
     required DateTime startDate,
@@ -167,16 +171,18 @@ class HomeNotifier extends _$HomeNotifier {
       // the list instead of patching it.
       if (newStartDate != null || previous?.taskFrequency != frequency) {
         await refreshTasks(ref.read(selectedDateProvider));
-        return;
+        return true;
       }
       List<Task> tasks = List<Task>.from(state.value ?? []);
       int index = tasks.indexWhere((task) => task.id == taskId);
       if (index != -1 && _isShowing(selectedDate)) tasks[index] = updatedTask;
       state = AsyncData(tasks);
+      return true;
     } catch (e, st) {
       ref.read(errorHandlerProvider).handle(e, st);
       // Restore previous state
       state = AsyncData(state.value ?? []);
+      return false;
     }
   }
 

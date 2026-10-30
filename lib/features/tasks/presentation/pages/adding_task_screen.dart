@@ -68,8 +68,9 @@ class AddingTaskScreen extends HookConsumerWidget {
         );
       }
 
+      final bool saved;
       if (task == null) {
-        await ref.read(homeProvider.notifier).createTask(
+        saved = await ref.read(homeProvider.notifier).createTask(
               title: titleEditingController.text,
               frequency: taskFrequency.value,
               startDate: selectedDate.value,
@@ -77,7 +78,7 @@ class AddingTaskScreen extends HookConsumerWidget {
               subtasks: subtasks.value,
             );
       } else {
-        await ref.read(homeProvider.notifier).editTask(
+        saved = await ref.read(homeProvider.notifier).editTask(
               title: titleEditingController.text,
               frequency: taskFrequency.value,
               startDate: selectedDate.value,
@@ -90,7 +91,9 @@ class AddingTaskScreen extends HookConsumerWidget {
             );
       }
 
-      if (context.mounted) context.pop();
+      // On failure keep the form open: the error is reported globally and the
+      // user must not lose what they wrote.
+      if (saved && context.mounted) context.pop();
     }
 
     void addSubTask() {

@@ -10,11 +10,11 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 void main() {
   /// Builds the AddingTaskScreen wrapped in ProviderScope with homeProvider
   /// overridden to avoid real async dependencies.
-  Widget buildTestWidget() {
+  Widget buildTestWidget({bool saves = true}) {
     return ProviderScope(
       overrides: [
         homeProvider.overrideWith(
-          () => _FakeHomeNotifier(),
+          () => _FakeHomeNotifier(saves: saves),
         ),
       ],
       child: MaterialApp(
@@ -23,6 +23,22 @@ void main() {
       ),
     );
   }
+
+  group('AddingTaskScreen - Saving', () {
+    testWidgets('keeps the form and its content when saving fails',
+        (tester) async {
+      await tester.pumpWidget(buildTestWidget(saves: false));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextFormField).first, 'Leer');
+      await tester.tap(find.text('Agregar'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AddingTaskScreen), findsOneWidget);
+      expect(find.text('Leer'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  });
 
   group('AddingTaskScreen - Widget Structure', () {
     testWidgets('uses DropdownMenu<TaskFrequency> instead of DropdownButton',
@@ -130,8 +146,22 @@ void main() {
 /// A fake HomeNotifier that returns an empty task list without
 /// requiring real dependencies (repositories, use cases, etc.).
 class _FakeHomeNotifier extends HomeNotifier {
+  final bool saves;
+
+  _FakeHomeNotifier({this.saves = true});
+
   @override
   Future<List<Task>> build() async {
     return [];
   }
+
+  @override
+  Future<bool> createTask({
+    required String title,
+    required DateTime startDate,
+    required TaskFrequency frequency,
+    DateTime? reminderDate,
+    List<String>? subtasks,
+  }) async =>
+      saves;
 }
