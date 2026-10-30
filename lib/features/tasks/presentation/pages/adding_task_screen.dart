@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:auto_admin_app/features/notifications/notification_providers.dart';
 import 'package:auto_admin_app/features/tasks/data/enums/task_frequency.dart';
 import 'package:auto_admin_app/features/tasks/domain/entities/task.dart';
 import 'package:auto_admin_app/features/tasks/presentation/provider/home_provider.dart';
@@ -171,6 +174,10 @@ class AddingTaskScreen extends HookConsumerWidget {
                             );
                             if (time != null) {
                               selectedTime.value = time;
+                              // Asked here, when its purpose is clear.
+                              unawaited(ref
+                                  .read(pushNotificationServiceProvider)
+                                  .requestPermission());
                               if (context.mounted) {
                                 reminderEditingController.text =
                                     time.format(context);

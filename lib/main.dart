@@ -1,4 +1,8 @@
+import 'package:auto_admin_app/core/constants/routes.dart';
+import 'package:auto_admin_app/core/errors/global_message_notifier.dart';
+import 'package:auto_admin_app/features/notifications/notification_providers.dart';
 import 'package:auto_admin_app/features/notifications/push_notification_service.dart';
+import 'package:auto_admin_app/features/tasks/presentation/provider/home_provider.dart';
 import 'package:auto_admin_app/firebase_options.dart';
 import 'package:auto_admin_app/global/router/router.dart';
 import 'package:auto_admin_app/global/theme/app_theme.dart';
@@ -15,15 +19,27 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  final pushService = PushNotificationService();
-  await pushService.requestPermission();
-  pushService.setupForegroundHandler();
+  await dotenv.load();
+
+  final container = ProviderContainer();
+  // The permission is requested when the user sets their first reminder.
+  final pushService = container.read(pushNotificationServiceProvider);
+  pushService.setupForegroundHandler(
+    container.read(globalMessageProvider.notifier).show,
+  );
+  pushService.setupOpenedHandler(() {
+    final now = DateTime.now();
+    container
+        .read(selectedDateProvider.notifier)
+        .selectDate(DateTime(now.year, now.month, now.day));
+    container.read(routerProvider).go(Routes.home);
+  });
   PushNotificationService.setupBackgroundHandler();
 
-  await dotenv.load();
   runApp(
-    ProviderScope(
-      child: MyApp(),
+    UncontrolledProviderScope(
+      container: container,
+      child: const MyApp(),
     ),
   );
 }

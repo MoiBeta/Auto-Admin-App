@@ -1,10 +1,11 @@
 import 'package:auto_admin_app/core/errors/app_error.dart';
 import 'package:auto_admin_app/core/errors/global_error_notifier.dart';
+import 'package:auto_admin_app/core/errors/global_message_notifier.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Widget that listens to the global error state and shows a SnackBar
-/// whenever an error is reported.
+/// Widget that listens to the global error and message states and shows a
+/// SnackBar whenever one is reported.
 ///
 /// Place this widget high in the tree (e.g., wrapping your router/scaffold).
 class ErrorListener extends ConsumerWidget {
@@ -17,6 +18,18 @@ class ErrorListener extends ConsumerWidget {
     ref.listen<AppError?>(globalErrorProvider, (previous, next) {
       if (next != null) {
         _showErrorSnackBar(context, next);
+      }
+    });
+    ref.listen<String?>(globalMessageProvider, (previous, next) {
+      if (next != null) {
+        final messenger = ScaffoldMessenger.maybeOf(context);
+        messenger?.hideCurrentSnackBar();
+        messenger?.showSnackBar(
+          SnackBar(
+            content: Text(next),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     });
 
