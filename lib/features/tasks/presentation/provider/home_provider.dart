@@ -30,13 +30,9 @@ class HomeNotifier extends _$HomeNotifier {
   late final UpdateTask _updateTask = ref.read(updateTaskProvider);
   late final ToggleTask _toggleTask = ref.read(toggleTaskProvider);
 
-  /// Debounce timers for subtask syncing, one per task, so toggling subtasks
-  /// of another task does not cancel a pending sync.
-  final Map<String, Timer> _subtaskSyncTimers = {};
-
-  /// The original task before any optimistic changes (for revert on error),
-  /// keyed by task ID.
-  final Map<String, Task> _pendingSyncOriginalTasks = {};
+  /// Pending subtask syncs, one per task, so toggling subtasks of another task
+  /// does not cancel a pending sync.
+  final Map<String, _SubtaskSync> _subtaskSyncs = {};
 
   @override
   Future<List<Task>> build() async {
@@ -219,33 +215,48 @@ class HomeNotifier extends _$HomeNotifier {
     tasks[taskIndex] = optimisticTask;
     state = AsyncData(tasks);
 
-    // 2. Store original task for revert (only first time per debounce window)
-    _pendingSyncOriginalTasks.putIfAbsent(task.id, () => task);
+    // 2. Remember the confirmed state for revert (only when a sync starts)
+    final sync = _subtaskSyncs.putIfAbsent(
+      task.id,
+      () => _SubtaskSync(confirmedTask: currentTask),
+    );
+    sync.hasUnsentChanges = true;
 
     // 3. Reset this task's debounce timer — send the full list after user stops
-    _subtaskSyncTimers[task.id]?.cancel();
-    _subtaskSyncTimers[task.id] = Timer(
+    sync.timer?.cancel();
+    sync.timer = Timer(
       const Duration(seconds: 1),
       () => _syncSubtasksToBackend(task.id, date),
     );
   }
 
   Future<void> _syncSubtasksToBackend(String taskId, DateTime date) async {
-    final originalTask = _pendingSyncOriginalTasks.remove(taskId);
-    _subtaskSyncTimers.remove(taskId);
+    final sync = _subtaskSyncs[taskId];
+    if (sync == null) return;
+    sync.timer = null;
+
+    // Only one request at a time per task: this one's completion sends the
+    // changes made in the meantime, so requests cannot arrive out of order.
+    if (sync.inFlight) return;
 
     // Get the current optimistic state of the task's subtasks
-    final tasks = List<Task>.from(state.value ?? []);
+    final tasks = state.value ?? [];
     final taskIndex = tasks.indexWhere((t) => t.id == taskId);
-    if (taskIndex == -1) return;
+    if (taskIndex == -1) {
+      _subtaskSyncs.remove(taskId);
+      return;
+    }
 
-    final currentTask = tasks[taskIndex];
-    final subtaskStates = currentTask.subtasks!
+    final subtaskStates = tasks[taskIndex]
+        .subtasks!
         .map((s) => SubtaskState(
               sourceSubTaskId: s.id,
               completed: s.completed,
             ))
         .toList();
+
+    sync.inFlight = true;
+    sync.hasUnsentChanges = false;
 
     try {
       final updatedTask = await ref.read(taskRepositoryProvider).syncSubtasks(
@@ -253,25 +264,40 @@ class HomeNotifier extends _$HomeNotifier {
             subtasks: subtaskStates,
             date: date,
           );
+      sync.inFlight = false;
+      sync.confirmedTask = updatedTask;
 
-      // Reconcile with backend truth
-      final currentTasks = List<Task>.from(state.value ?? []);
-      final currentIndex = currentTasks.indexWhere((t) => t.id == taskId);
-      if (currentIndex != -1) {
-        currentTasks[currentIndex] = updatedTask;
-        state = AsyncData(currentTasks);
+      // Reconcile with backend truth, unless the user toggled something else
+      // meanwhile: that response is already outdated.
+      if (!sync.hasUnsentChanges) {
+        _subtaskSyncs.remove(taskId);
+        _replaceTask(updatedTask);
       }
     } catch (e, st) {
-      // Revert to original task state on failure
-      if (originalTask != null) {
-        final revertTasks = List<Task>.from(state.value ?? []);
-        final revertIndex = revertTasks.indexWhere((t) => t.id == taskId);
-        if (revertIndex != -1) {
-          revertTasks[revertIndex] = originalTask;
-          state = AsyncData(revertTasks);
-        }
+      sync.inFlight = false;
+
+      // Revert to the confirmed state on failure. With newer changes pending,
+      // their sync carries the full list and retries this one too.
+      if (!sync.hasUnsentChanges) {
+        _subtaskSyncs.remove(taskId);
+        _replaceTask(sync.confirmedTask);
+        ref.read(errorHandlerProvider).handle(e, st);
       }
-      ref.read(errorHandlerProvider).handle(e, st);
+    }
+
+    // The debounce timer expired during the request, so nothing else will
+    // send these changes.
+    if (sync.hasUnsentChanges && sync.timer == null) {
+      await _syncSubtasksToBackend(taskId, date);
+    }
+  }
+
+  void _replaceTask(Task task) {
+    final tasks = List<Task>.from(state.value ?? []);
+    final index = tasks.indexWhere((t) => t.id == task.id);
+    if (index != -1) {
+      tasks[index] = task;
+      state = AsyncData(tasks);
     }
   }
 
@@ -326,6 +352,19 @@ class HomeNotifier extends _$HomeNotifier {
       state = AsyncData(previousTasks);
     }
   }
+}
+
+/// Debounce and in-flight state of a task's subtask sync.
+class _SubtaskSync {
+  /// Last state known to be saved on the backend, for revert on error.
+  Task confirmedTask;
+  Timer? timer;
+  bool inFlight = false;
+
+  /// Toggles not yet included in a request.
+  bool hasUnsentChanges = false;
+
+  _SubtaskSync({required this.confirmedTask});
 }
 
 @riverpod
