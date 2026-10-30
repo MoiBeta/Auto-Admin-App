@@ -63,6 +63,9 @@ class HomeNotifier extends _$HomeNotifier {
         sync.timer?.cancel();
       }
       _subtaskSyncs.clear();
+      // A load in progress belongs to the previous session.
+      _latestLoad++;
+      _isLoadingTasks = false;
     });
 
     if (userId == null) return [];
@@ -95,11 +98,11 @@ class HomeNotifier extends _$HomeNotifier {
     state = const AsyncLoading();
     try {
       final tasks = await getTasks(date);
-      if (load != _latestLoad) return;
+      if (!ref.mounted || load != _latestLoad) return;
       _isLoadingTasks = false;
       state = AsyncData(tasks);
     } catch (e, st) {
-      if (load != _latestLoad) return;
+      if (!ref.mounted || load != _latestLoad) return;
       _isLoadingTasks = false;
       ref.read(errorHandlerProvider).handle(e, st);
       state = AsyncError(e, st);

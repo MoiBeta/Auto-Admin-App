@@ -677,4 +677,20 @@ void main() {
       expect(container.read(homeProvider).value, hasLength(2));
     });
   });
+
+  test('a load in progress when the session ends does not show its tasks',
+      () async {
+    final slow = Completer<List<Task>>();
+    repository.onGetAllTasks = (_) => slow.future;
+    final notifier = container.read(homeProvider.notifier);
+    final load = notifier.refreshTasks(container.read(selectedDateProvider));
+
+    (container.read(authNotifierProvider.notifier) as _FakeAuthNotifier)
+        .signIn(null);
+    expect(await container.read(homeProvider.future), isEmpty);
+
+    slow.complete([_task({}, id: 'previous-user-task')]);
+    await load;
+    expect(container.read(homeProvider).value, isEmpty);
+  });
 }
