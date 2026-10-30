@@ -1,5 +1,14 @@
 import 'package:dio/dio.dart';
 
+/// Options shared by every client, so a stalled network ends in a timeout
+/// error instead of a request that never finishes.
+BaseOptions apiOptions(String baseUrl) => BaseOptions(
+      baseUrl: baseUrl,
+      connectTimeout: const Duration(seconds: 10),
+      sendTimeout: const Duration(seconds: 15),
+      receiveTimeout: const Duration(seconds: 15),
+    );
+
 class DioClient {
   final Dio dio;
 

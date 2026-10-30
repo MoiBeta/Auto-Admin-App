@@ -21,7 +21,7 @@ final habitsBaseUrlProvider =
 
 final habitsDioProvider = Provider<Dio>((ref) {
   final baseUrl = ref.watch(habitsBaseUrlProvider);
-  final dio = Dio(BaseOptions(baseUrl: baseUrl));
+  final dio = Dio(apiOptions(baseUrl));
   final tokenManager = ref.watch(tokenManagerProvider);
   final refreshDio = ref.watch(refreshDioProvider);
   dio.interceptors.addAll([

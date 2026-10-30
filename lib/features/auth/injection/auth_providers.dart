@@ -24,7 +24,7 @@ final authBaseUrlProvider =
 
 final refreshDioProvider = Provider<Dio>((ref) {
   final baseUrl = ref.watch(authBaseUrlProvider);
-  Dio dio = Dio(BaseOptions(baseUrl: baseUrl));
+  Dio dio = Dio(apiOptions(baseUrl));
   final tokenManager = ref.watch(tokenManagerProvider);
   dio.interceptors.add(RefreshInterceptor(tokenManager));
   return dio;
@@ -32,7 +32,7 @@ final refreshDioProvider = Provider<Dio>((ref) {
 
 final authDioProvider = Provider<Dio>((ref) {
   final baseUrl = ref.watch(authBaseUrlProvider);
-  final dio = Dio(BaseOptions(baseUrl: baseUrl));
+  final dio = Dio(apiOptions(baseUrl));
   final tokenManager = ref.watch(tokenManagerProvider);
   final refreshDio = ref.watch(refreshDioProvider);
 
