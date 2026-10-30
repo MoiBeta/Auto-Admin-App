@@ -19,7 +19,7 @@ class HomePage extends ConsumerWidget {
   ) {
     AsyncValue<List<Task>> tasksList = ref.watch(homeProvider);
     DateTime selectedDate = ref.watch(selectedDateProvider);
-    final dates = getDateTimeRange();
+    final dates = selectableDays(ref.watch(todayProvider));
     return Scaffold(
       drawer: HomeDrawer(),
       appBar: AppBar(
@@ -47,8 +47,7 @@ class HomePage extends ConsumerWidget {
                   final shouldShowMonth =
                       index == 0 || currentMonth != previousMonth;
 
-                  final isSelected = selectedDate.month == date.month &&
-                      selectedDate.day == date.day;
+                  final isSelected = selectedDate == date;
 
                   return GestureDetector(
                     onTap: () {
@@ -163,17 +162,5 @@ class HomePage extends ConsumerWidget {
         },
       ),
     );
-  }
-
-  List<DateTime> getDateTimeRange() {
-    List<DateTime> datesList = [];
-    for (int i = -3; i < 4; i++) {
-      datesList.add(DateTime(
-        DateTime.now().year,
-        DateTime.now().month,
-        DateTime.now().day,
-      ).add(Duration(days: i)));
-    }
-    return datesList;
   }
 }

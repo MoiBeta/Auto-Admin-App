@@ -102,6 +102,15 @@ class _FakeTasksRepository extends TasksRepository {
   }
 }
 
+class _FakeToday extends Today {
+  DateTime current;
+
+  _FakeToday(this.current);
+
+  @override
+  DateTime now() => current;
+}
+
 class _FakeAuthNotifier extends AuthNotifier {
   @override
   Future<LoginState> build() async => _session('user-1');
@@ -597,6 +606,36 @@ void main() {
       );
       expect(byId('a').priority, 100);
       expect(byId('b').completed, isTrue);
+    });
+  });
+
+  group('days', () {
+    test('selectableDays gives seven consecutive days at midnight', () {
+      final days = selectableDays(DateTime(2026, 3, 8));
+      expect(days.first, DateTime(2026, 3, 5));
+      expect(days.last, DateTime(2026, 3, 11));
+      expect(days.map((d) => d.day).toSet(), hasLength(7));
+      expect(days.every((d) => d.hour == 0), isTrue);
+    });
+
+    test('the selection follows today after midnight unless it was moved', () {
+      final clock = _FakeToday(DateTime(2026, 10, 30, 23));
+      final dates = ProviderContainer(
+        overrides: [todayProvider.overrideWith(() => clock)],
+      );
+      addTearDown(dates.dispose);
+      dates.listen(selectedDateProvider, (_, __) {});
+
+      clock.current = DateTime(2026, 10, 31, 0, 5);
+      dates.read(todayProvider.notifier).refresh();
+      expect(dates.read(selectedDateProvider), DateTime(2026, 10, 31));
+
+      dates
+          .read(selectedDateProvider.notifier)
+          .selectDate(DateTime(2026, 10, 29));
+      clock.current = DateTime(2026, 11, 1);
+      dates.read(todayProvider.notifier).refresh();
+      expect(dates.read(selectedDateProvider), DateTime(2026, 10, 29));
     });
   });
 }

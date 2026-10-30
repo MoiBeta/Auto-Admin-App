@@ -474,15 +474,41 @@ class _SubtaskSync {
   _SubtaskSync({required this.confirmedTask});
 }
 
+/// The current local day, updated when the app returns to the foreground.
+@Riverpod(keepAlive: true)
+class Today extends _$Today {
+  @override
+  DateTime build() {
+    final lifecycle = AppLifecycleListener(onResume: refresh);
+    ref.onDispose(lifecycle.dispose);
+    return _startOfDay(now());
+  }
+
+  @visibleForTesting
+  DateTime now() => DateTime.now();
+
+  void refresh() => state = _startOfDay(now());
+
+  DateTime _startOfDay(DateTime date) =>
+      DateTime(date.year, date.month, date.day);
+}
+
+/// The days offered by the date selector. Built from calendar fields because
+/// adding 24 hours can land on the same day when daylight saving time changes.
+List<DateTime> selectableDays(DateTime today) => [
+      for (int i = -3; i < 4; i++)
+        DateTime(today.year, today.month, today.day + i),
+    ];
+
 @riverpod
 class SelectedDate extends _$SelectedDate {
   @override
   DateTime build() {
-    return DateTime(
-      DateTime.now().year,
-      DateTime.now().month,
-      DateTime.now().day,
-    );
+    // Whoever was looking at "today" keeps looking at it after midnight.
+    ref.listen(todayProvider, (previous, next) {
+      if (state == previous) state = next;
+    });
+    return ref.read(todayProvider);
   }
 
   void selectDate(DateTime date) {
