@@ -43,6 +43,12 @@ class HomeNotifier extends _$HomeNotifier {
   /// Identifies the latest load, so a slower older one cannot overwrite it.
   int _latestLoad = 0;
 
+  /// Deleted tasks that can still be restored, by task ID.
+  final Map<String, _PendingDelete> _pendingDeletes = {};
+
+  /// Longer than the snackbar offering to undo, so undoing is always possible.
+  static const _undoDeleteWindow = Duration(seconds: 5);
+
   /// Task toggles waiting for a response, by task and day.
   final Set<(String, DateTime)> _togglesInFlight = {};
   bool _isLoadingTasks = false;
@@ -56,13 +62,17 @@ class HomeNotifier extends _$HomeNotifier {
 
     listenDateChanges();
 
-    final lifecycle = AppLifecycleListener(onHide: flushSubtaskSyncs);
+    final lifecycle = AppLifecycleListener(onHide: flushPendingChanges);
     ref.onDispose(() {
       lifecycle.dispose();
       for (final sync in _subtaskSyncs.values) {
         sync.timer?.cancel();
       }
       _subtaskSyncs.clear();
+      for (final pending in _pendingDeletes.values) {
+        pending.timer.cancel();
+      }
+      _pendingDeletes.clear();
       // A load in progress belongs to the previous session.
       _latestLoad++;
       _isLoadingTasks = false;
@@ -74,7 +84,10 @@ class HomeNotifier extends _$HomeNotifier {
 
   Future<List<Task>> getTasks(DateTime date) async {
     final tasks = await _getAllTasks.call(date);
-    return tasks.map((task) => _withPendingToggles(task, date)).toList();
+    return tasks
+        .where((task) => !_pendingDeletes.containsKey(task.id))
+        .map((task) => _withPendingToggles(task, date))
+        .toList();
   }
 
   /// Toggles not saved yet are newer than what the backend just returned.
@@ -192,7 +205,50 @@ class HomeNotifier extends _$HomeNotifier {
     }
   }
 
-  Future<void> deleteTask({
+  /// Hides the task now and deletes it when the undo window ends.
+  void scheduleDelete(Task task) {
+    final tasks = List<Task>.from(state.value ?? []);
+    final index = tasks.indexWhere((t) => t.id == task.id);
+    if (index == -1) return;
+    tasks.removeAt(index);
+    _pendingDeletes[task.id] = _PendingDelete(
+      task: task,
+      index: index,
+      date: ref.read(selectedDateProvider),
+      timer: Timer(_undoDeleteWindow, () => _commitDelete(task.id)),
+    );
+    state = AsyncData(tasks);
+  }
+
+  void undoDelete(String taskId) {
+    final pending = _pendingDeletes[taskId];
+    if (pending == null || pending.request != null) return;
+    _pendingDeletes.remove(taskId);
+    pending.timer.cancel();
+
+    if (!_isShowing(pending.date)) return;
+    final tasks = List<Task>.from(state.value ?? []);
+    tasks.insert(pending.index.clamp(0, tasks.length), pending.task);
+    state = AsyncData(tasks);
+  }
+
+  Future<void> _commitDelete(String taskId) {
+    final pending = _pendingDeletes[taskId];
+    if (pending == null) return Future.value();
+    pending.timer.cancel();
+    return pending.request ??= _sendDelete(taskId);
+  }
+
+  Future<void> _sendDelete(String taskId) async {
+    final deleted = await deleteTask(taskId: taskId, scope: DeleteScope.all);
+    if (!ref.mounted) return;
+    _pendingDeletes.remove(taskId);
+    // It is still on the backend: show it again.
+    if (!deleted) await refreshTasks(ref.read(selectedDateProvider));
+  }
+
+  /// Returns whether the task was deleted.
+  Future<bool> deleteTask({
     required String taskId,
     required DeleteScope scope,
     DateTime? referenceDate,
@@ -214,14 +270,16 @@ class HomeNotifier extends _$HomeNotifier {
         return true;
       });
       state = AsyncData(tasks);
+      return true;
     } catch (e, st) {
       ref.read(errorHandlerProvider).handle(e, st);
+      return false;
     }
   }
 
   void listenDateChanges() {
     ref.listen(selectedDateProvider, (previous, next) {
-      unawaited(flushSubtaskSyncs());
+      unawaited(flushPendingChanges());
       refreshTasks(next);
     });
   }
@@ -304,13 +362,16 @@ class HomeNotifier extends _$HomeNotifier {
     );
   }
 
-  /// Sends the pending subtask changes now, without waiting for the debounce,
-  /// and completes when they are saved or reverted.
-  Future<void> flushSubtaskSyncs() async {
-    await Future.wait(_subtaskSyncs.entries.toList().map((entry) {
-      entry.value.timer?.cancel();
-      return _syncSubtasksToBackend(entry.key.$1, entry.key.$2);
-    }));
+  /// Sends the pending subtask changes and deletions now, without waiting, and
+  /// completes when they are saved or reverted.
+  Future<void> flushPendingChanges() async {
+    await Future.wait([
+      ..._subtaskSyncs.entries.toList().map((entry) {
+        entry.value.timer?.cancel();
+        return _syncSubtasksToBackend(entry.key.$1, entry.key.$2);
+      }),
+      ..._pendingDeletes.keys.toList().map(_commitDelete),
+    ]);
   }
 
   Future<void> _syncSubtasksToBackend(String taskId, DateTime date) {
@@ -494,6 +555,23 @@ class HomeNotifier extends _$HomeNotifier {
       }
     }
   }
+}
+
+class _PendingDelete {
+  final Task task;
+
+  /// Position in the list, to restore it in place.
+  final int index;
+  final DateTime date;
+  final Timer timer;
+  Future<void>? request;
+
+  _PendingDelete({
+    required this.task,
+    required this.index,
+    required this.date,
+    required this.timer,
+  });
 }
 
 /// Debounce and in-flight state of a task's subtask sync.

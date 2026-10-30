@@ -1,7 +1,6 @@
 import 'package:auto_admin_app/core/constants/routes.dart';
 import 'package:auto_admin_app/features/tasks/domain/entities/sub_task.dart';
 import 'package:auto_admin_app/features/tasks/domain/entities/task.dart';
-import 'package:auto_admin_app/features/tasks/domain/enums/delete_scope.dart';
 import 'package:auto_admin_app/features/tasks/presentation/provider/home_provider.dart';
 import 'package:auto_admin_app/global/theme/spacing.dart';
 import 'package:flutter/material.dart';
@@ -30,13 +29,42 @@ class _TaskListTileState extends ConsumerState<TaskListTile> {
         date: ref.read(selectedDateProvider));
   }
 
+  void _delete() {
+    final notifier = ref.read(homeProvider.notifier);
+    notifier.scheduleDelete(widget.task);
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text('"${widget.task.title}" eliminada'),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 4),
+          // Must close before the delete is sent, even with an action.
+          persist: false,
+          action: SnackBarAction(
+            label: 'Deshacer',
+            onPressed: () => notifier.undoDelete(widget.task.id),
+          ),
+        ),
+      );
+  }
+
   @override
   Widget build(BuildContext context) {
     final task = widget.task;
-    final hasSubtasks = (task.subtasks?.isNotEmpty ?? false);
+    final subtasks = task.subtasks ?? [];
+    final hasSubtasks = subtasks.isNotEmpty;
+    final completedSubtasks = subtasks.where((s) => s.completed).length;
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
 
     return Semantics(
-      label: '${task.title}, ${task.completed ? "completada" : "pendiente"}',
+      label: [
+        task.title,
+        task.completed ? 'completada' : 'pendiente',
+        if (hasSubtasks) '$completedSubtasks de ${subtasks.length} subtareas',
+      ].join(', '),
+      expanded: hasSubtasks ? _expanded : null,
       child: Card(
         elevation: 1,
         shape: RoundedRectangleBorder(
@@ -61,33 +89,53 @@ class _TaskListTileState extends ConsumerState<TaskListTile> {
                     SizedBox(
                       width: 48,
                       height: 48,
-                      child: InkResponse(
-                        onTap: hasSubtasks
-                            ? null
-                            : () => ref.read(homeProvider.notifier).toggleTask(
-                                task: task,
-                                date: ref.read(selectedDateProvider)),
-                        child: Icon(
-                          task.completed
-                              ? Icons.check_box
-                              : Icons.check_box_outline_blank,
-                          color: task.completed
-                              ? Theme.of(context).colorScheme.primary
-                              : null,
-                        ),
-                      ),
+                      child: hasSubtasks
+                          // Completed through its subtasks: progress instead of
+                          // a checkbox that would do nothing.
+                          ? Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                SizedBox(
+                                  width: 40,
+                                  height: 40,
+                                  child: CircularProgressIndicator(
+                                    value: completedSubtasks / subtasks.length,
+                                    strokeWidth: 3,
+                                    backgroundColor:
+                                        colorScheme.surfaceContainerHighest,
+                                  ),
+                                ),
+                                Text(
+                                  '$completedSubtasks/${subtasks.length}',
+                                  style: textTheme.labelSmall,
+                                ),
+                              ],
+                            )
+                          : InkResponse(
+                              onTap: () => ref
+                                  .read(homeProvider.notifier)
+                                  .toggleTask(
+                                      task: task,
+                                      date: ref.read(selectedDateProvider)),
+                              child: Icon(
+                                task.completed
+                                    ? Icons.check_box
+                                    : Icons.check_box_outline_blank,
+                                color:
+                                    task.completed ? colorScheme.primary : null,
+                              ),
+                            ),
                     ),
                     Expanded(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 8),
                         child: AnimatedDefaultTextStyle(
                           duration: const Duration(milliseconds: 200),
-                          style:
-                              Theme.of(context).textTheme.titleMedium!.copyWith(
-                                    decoration: task.completed
-                                        ? TextDecoration.lineThrough
-                                        : null,
-                                  ),
+                          style: textTheme.titleMedium!.copyWith(
+                            decoration: task.completed
+                                ? TextDecoration.lineThrough
+                                : null,
+                          ),
                           child: Text(
                             task.title,
                             maxLines: 2,
@@ -99,74 +147,41 @@ class _TaskListTileState extends ConsumerState<TaskListTile> {
                     if (hasSubtasks)
                       Icon(
                         _expanded ? Icons.expand_less : Icons.expand_more,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        color: colorScheme.onSurfaceVariant,
                       ),
                     MenuAnchor(
                       menuChildren: [
-                        ListTile(
-                          leading: const Icon(Icons.edit),
-                          title: const Text('Editar'),
-                          onTap: () {
+                        MenuItemButton(
+                          leadingIcon: const Icon(Icons.edit),
+                          onPressed: () {
                             context.pushNamed(
                               Routes.addingTask,
                               extra: task,
                             );
                           },
+                          child: const Text('Editar'),
                         ),
-                        ListTile(
-                          leading: const Icon(Icons.delete),
-                          title: const Text('Borrar'),
-                          onTap: () {
-                            showDialog(
-                              context: context,
-                              builder: (ctx) => AlertDialog(
-                                title: const Icon(Icons.warning, size: 80),
-                                content:
-                                    const Text('¿Quieres eliminar esta tarea?'),
-                                actions: [
-                                  FilledButton(
-                                    style: FilledButton.styleFrom(
-                                      backgroundColor:
-                                          Theme.of(ctx).colorScheme.error,
-                                      foregroundColor:
-                                          Theme.of(ctx).colorScheme.onError,
-                                    ),
-                                    onPressed: () async {
-                                      await ref
-                                          .read(homeProvider.notifier)
-                                          .deleteTask(
-                                            taskId: task.id,
-                                            scope: DeleteScope.all,
-                                          );
-                                      if (ctx.mounted) ctx.pop();
-                                    },
-                                    child: const Text('Sí, eliminar'),
-                                  ),
-                                  TextButton(
-                                    onPressed: () => ctx.pop(),
-                                    child: const Text('No'),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
+                        MenuItemButton(
+                          leadingIcon: const Icon(Icons.delete),
+                          onPressed: _delete,
+                          child: const Text('Borrar'),
                         ),
                       ],
                       builder: (context, controller, child) {
-                        return SizedBox(
-                          width: 48,
-                          height: 48,
-                          child: GestureDetector(
-                            onTap: () {
-                              controller.isOpen
-                                  ? controller.close()
-                                  : controller.open();
-                            },
-                            child: Center(child: child),
+                        return IconButton(
+                          tooltip: 'Más opciones',
+                          constraints: const BoxConstraints(
+                            minWidth: 48,
+                            minHeight: 48,
                           ),
+                          icon: const Icon(Icons.more_vert),
+                          onPressed: () {
+                            controller.isOpen
+                                ? controller.close()
+                                : controller.open();
+                          },
                         );
                       },
-                      child: const Icon(Icons.more_vert),
                     ),
                   ],
                 ),
@@ -185,38 +200,32 @@ class _TaskListTileState extends ConsumerState<TaskListTile> {
                 padding: const EdgeInsets.only(
                     left: 45, right: 12, bottom: 8, top: 4),
                 child: Column(
-                  children: task.subtasks?.map((subtask) {
-                        return ListTile(
-                          onTap: () => _toggleSubtaskCompletion(subtask),
-                          dense: true,
-                          contentPadding: EdgeInsets.zero,
-                          leading: IconButton(
-                            icon: Icon(
-                              subtask.completed
-                                  ? Icons.check_circle
-                                  : Icons.radio_button_unchecked,
-                              color: subtask.completed
-                                  ? Theme.of(context).colorScheme.primary
-                                  : Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant,
-                            ),
-                            onPressed: () => _toggleSubtaskCompletion(subtask),
+                  children: subtasks.map((subtask) {
+                    return Semantics(
+                      checked: subtask.completed,
+                      child: ListTile(
+                        onTap: () => _toggleSubtaskCompletion(subtask),
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(
+                          subtask.completed
+                              ? Icons.check_circle
+                              : Icons.radio_button_unchecked,
+                          color: subtask.completed
+                              ? colorScheme.primary
+                              : colorScheme.onSurfaceVariant,
+                        ),
+                        title: Text(
+                          subtask.title,
+                          style: textTheme.bodyMedium?.copyWith(
+                            decoration: subtask.completed
+                                ? TextDecoration.lineThrough
+                                : null,
                           ),
-                          title: Text(
-                            subtask.title,
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyMedium
-                                ?.copyWith(
-                                  decoration: subtask.completed
-                                      ? TextDecoration.lineThrough
-                                      : null,
-                                ),
-                          ),
-                        );
-                      }).toList() ??
-                      [],
+                        ),
+                      ),
+                    );
+                  }).toList(),
                 ),
               ),
             ),

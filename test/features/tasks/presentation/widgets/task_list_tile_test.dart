@@ -1,4 +1,5 @@
 import 'package:auto_admin_app/features/tasks/data/enums/task_frequency.dart';
+import 'package:auto_admin_app/features/tasks/domain/entities/sub_task.dart';
 import 'package:auto_admin_app/features/tasks/domain/entities/task.dart';
 import 'package:auto_admin_app/features/tasks/presentation/provider/home_provider.dart';
 import 'package:auto_admin_app/features/tasks/presentation/widgets/task_list_tile.dart';
@@ -65,6 +66,53 @@ void main() {
     });
   });
 
+  group('TaskListTile - Subtasks', () {
+    testWidgets('shows progress instead of an inert checkbox', (tester) async {
+      await tester.pumpWidget(buildTestWidget(testTask.copyWith(subtasks: [
+        Subtask(id: 's1', title: 'Uno', completed: true),
+        Subtask(id: 's2', title: 'Dos', completed: false),
+      ])));
+      await tester.pumpAndSettle();
+
+      expect(find.text('1/2'), findsOneWidget);
+      expect(find.byIcon(Icons.check_box_outline_blank), findsNothing);
+      expect(
+        find.bySemanticsLabel(RegExp(r'1 de 2 subtareas')),
+        findsOneWidget,
+      );
+    });
+  });
+
+  group('TaskListTile - Delete', () {
+    testWidgets('deletes from the menu and offers to undo', (tester) async {
+      final home = _RecordingHomeNotifier();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            homeProvider.overrideWith(() => home),
+            selectedDateProvider.overrideWithValue(DateTime(2024, 1, 15)),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.lightTheme,
+            home: Scaffold(body: TaskListTile(task: testTask)),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('Más opciones'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Borrar'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Borrar'), findsNothing, reason: 'the menu closes');
+      expect(home.scheduled, ['test-task-1']);
+
+      await tester.tap(find.text('Deshacer'));
+      expect(home.undone, ['test-task-1']);
+    });
+  });
+
   group('TaskListTile - Semantic labels', () {
     testWidgets('has semantic label with task title and pending state',
         (WidgetTester tester) async {
@@ -108,11 +156,9 @@ void main() {
       await tester.pumpWidget(buildTestWidget(testTask));
       await tester.pumpAndSettle();
 
-      // The MenuAnchor builder wraps its child in a SizedBox(48x48) with GestureDetector
-      final gestureDetectorSize =
-          tester.getSize(find.byType(GestureDetector).first);
-      expect(gestureDetectorSize.width, greaterThanOrEqualTo(48));
-      expect(gestureDetectorSize.height, greaterThanOrEqualTo(48));
+      final buttonSize = tester.getSize(find.byTooltip('Más opciones'));
+      expect(buttonSize.width, greaterThanOrEqualTo(48));
+      expect(buttonSize.height, greaterThanOrEqualTo(48));
     });
   });
 
@@ -164,4 +210,18 @@ void main() {
       );
     });
   });
+}
+
+class _RecordingHomeNotifier extends HomeNotifier {
+  final List<String> scheduled = [];
+  final List<String> undone = [];
+
+  @override
+  Future<List<Task>> build() async => [];
+
+  @override
+  void scheduleDelete(Task task) => scheduled.add(task.id);
+
+  @override
+  void undoDelete(String taskId) => undone.add(taskId);
 }

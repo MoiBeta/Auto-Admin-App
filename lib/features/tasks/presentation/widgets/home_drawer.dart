@@ -27,7 +27,7 @@ class _HomeDrawerState extends ConsumerState<HomeDrawer> {
           final container = ProviderScope.containerOf(context, listen: false);
           Navigator.of(context).pop();
           // While the session is valid: save the pending subtask changes.
-          await container.read(homeProvider.notifier).flushSubtaskSyncs();
+          await container.read(homeProvider.notifier).flushPendingChanges();
           // The router and the tasks provider react to the session ending.
           await container.read(authNotifierProvider.notifier).logout();
         }

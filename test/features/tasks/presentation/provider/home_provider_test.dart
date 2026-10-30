@@ -56,6 +56,7 @@ class _FakeTasksRepository extends TasksRepository {
   final List<_SyncCall> syncCalls = [];
   final List<UpdateTaskData> edits = [];
   final List<Completer<Task>> toggles = [];
+  final List<String> deletes = [];
   Completer<void>? deleteResponse;
   Object? editError;
 
@@ -85,8 +86,10 @@ class _FakeTasksRepository extends TasksRepository {
   Future<Task> createNewTask(NewTaskData newTaskData) async =>
       _task({}, id: 'new');
   @override
-  Future<void> deleteTask(DeleteTaskData deleteTaskData) =>
-      deleteResponse?.future ?? Future.value();
+  Future<void> deleteTask(DeleteTaskData deleteTaskData) => (
+        deletes..add(deleteTaskData.taskId),
+        deleteResponse?.future ?? Future.value()
+      ).$2;
   @override
   Future<Task> editTask(UpdateTaskData updateTaskData) async {
     edits.add(updateTaskData);
@@ -454,13 +457,13 @@ void main() {
   });
 
   group('pending subtask syncs', () {
-    test('flushSubtaskSyncs sends them now and waits for the response',
+    test('flushPendingChanges sends them now and waits for the response',
         () async {
       tap('s1');
       var flushed = false;
       final flush = container
           .read(homeProvider.notifier)
-          .flushSubtaskSyncs()
+          .flushPendingChanges()
           .then((_) => flushed = true);
       await settle();
       expect(repository.syncCalls, hasLength(1));
@@ -471,12 +474,12 @@ void main() {
       expect(flushed, isTrue);
     });
 
-    test('flushSubtaskSyncs also waits for changes made during a request',
+    test('flushPendingChanges also waits for changes made during a request',
         () async {
       tap('s1');
       await Future<void>.delayed(_debounce);
       tap('s2');
-      final flush = container.read(homeProvider.notifier).flushSubtaskSyncs();
+      final flush = container.read(homeProvider.notifier).flushPendingChanges();
       await settle();
 
       repository.syncCalls.single.succeed();
@@ -692,5 +695,56 @@ void main() {
     slow.complete([_task({}, id: 'previous-user-task')]);
     await load;
     expect(container.read(homeProvider).value, isEmpty);
+  });
+
+  group('scheduleDelete', () {
+    HomeNotifier notifier() => container.read(homeProvider.notifier);
+
+    setUp(() async {
+      repository.tasks
+        ..clear()
+        ..addAll([
+          _task({}, id: 'a', priority: 100),
+          _task({}, id: 'b', priority: 200),
+        ]);
+      await notifier().refreshTasks(container.read(selectedDateProvider));
+    });
+
+    List<String> shownIds() =>
+        container.read(homeProvider).value!.map((t) => t.id).toList();
+
+    test('undo restores the task in place without deleting it', () async {
+      notifier().scheduleDelete(currentTask());
+      expect(shownIds(), ['b']);
+
+      notifier().undoDelete('a');
+      await notifier().flushPendingChanges();
+      expect(shownIds(), ['a', 'b']);
+      expect(repository.deletes, isEmpty);
+    });
+
+    test('stays hidden if the list reloads during the undo window', () async {
+      notifier().scheduleDelete(currentTask());
+      await notifier().refreshTasks(container.read(selectedDateProvider));
+      expect(shownIds(), ['b']);
+    });
+
+    test('is sent once when the pending changes are flushed', () async {
+      notifier().scheduleDelete(currentTask());
+      await Future.wait([
+        notifier().flushPendingChanges(),
+        notifier().flushPendingChanges(),
+      ]);
+      expect(repository.deletes, ['a']);
+      expect(shownIds(), ['b']);
+    });
+
+    test('shows the task again if the backend could not delete it', () async {
+      repository.deleteResponse = Completer<void>()
+        ..completeError(Exception('failed'));
+      notifier().scheduleDelete(currentTask());
+      await notifier().flushPendingChanges();
+      expect(shownIds(), ['a', 'b']);
+    });
   });
 }
