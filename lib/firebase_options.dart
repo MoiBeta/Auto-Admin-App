@@ -54,7 +54,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyAQmK0QSMw2J3lxzudLf8a8roECBbmsOeA',
-    appId: '1:980242623902:android:12699b6c7fc116af49fa8f',
+    appId: '1:980242623902:android:7f250958a5cdade649fa8f',
     messagingSenderId: '980242623902',
     projectId: 'auto-admin-app',
     storageBucket: 'auto-admin-app.firebasestorage.app',
