@@ -6,6 +6,7 @@ import 'package:auto_admin_app/features/tasks/presentation/provider/home_provide
 import 'package:auto_admin_app/firebase_options.dart';
 import 'package:auto_admin_app/global/router/router.dart';
 import 'package:auto_admin_app/global/theme/app_theme.dart';
+import 'package:auto_admin_app/global/widgets/forge/forge_fire_shader.dart';
 import 'package:auto_admin_app/global/widgets/error_listener.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -15,6 +16,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Ready before the first task is completed; it never throws.
+  ForgeFireShader.load();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );

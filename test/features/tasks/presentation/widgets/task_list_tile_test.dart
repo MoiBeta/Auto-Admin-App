@@ -4,6 +4,8 @@ import 'package:auto_admin_app/features/tasks/domain/entities/task.dart';
 import 'package:auto_admin_app/features/tasks/presentation/provider/home_provider.dart';
 import 'package:auto_admin_app/features/tasks/presentation/widgets/task_list_tile.dart';
 import 'package:auto_admin_app/global/theme/app_theme.dart';
+import 'package:auto_admin_app/global/theme/forge_palette.dart';
+import 'package:auto_admin_app/global/widgets/forge/flame_edge.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -210,6 +212,96 @@ void main() {
       );
     });
   });
+
+  group('TaskListTile - Forge animation', () {
+    Color? cardColor(WidgetTester tester) =>
+        tester.widget<Card>(find.byType(Card).first).color;
+
+    testWidgets('a task completed elsewhere is forged without animating',
+        (tester) async {
+      await tester.pumpWidget(buildTestWidget(testTask));
+      await tester.pumpWidget(
+        buildTestWidget(testTask.copyWith(completed: true)),
+      );
+
+      expect(find.byType(FlameEdge), findsNothing);
+      expect(find.byType(Card), findsOneWidget);
+      expect(cardColor(tester), ForgePalette.steel);
+    });
+
+    Widget buildList(_TogglingHomeNotifier notifier, {bool noMotion = false}) {
+      return ProviderScope(
+        overrides: [
+          selectedDateProvider.overrideWithValue(DateTime(2024, 1, 15)),
+          homeProvider.overrideWith(() => notifier),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: MediaQuery(
+            data: MediaQueryData(disableAnimations: noMotion),
+            child: Scaffold(
+              body: Consumer(
+                builder: (context, ref, _) => Column(
+                  children: [
+                    for (final task in ref.watch(homeProvider).value ?? [])
+                      TaskListTile(key: ValueKey(task.id), task: task),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    testWidgets('touching a task saves at once and ends forged',
+        (tester) async {
+      final notifier = _TogglingHomeNotifier(testTask);
+      await tester.pumpWidget(buildList(notifier));
+      await tester.pump();
+
+      await tester.tap(find.byIcon(Icons.check_box_outline_blank));
+      // Saved before the first frame of the animation.
+      expect(notifier.toggles, 1);
+      await tester.pump();
+
+      expect(find.byType(FlameEdge), findsOneWidget);
+      expect(find.byType(Card), findsNWidgets(2));
+
+      await tester.pumpAndSettle();
+      expect(find.byType(FlameEdge), findsNothing);
+      expect(find.byType(Card), findsOneWidget);
+      expect(cardColor(tester), ForgePalette.steel);
+      expect(find.byIcon(Icons.check_box), findsOneWidget);
+      expect(notifier.toggles, 1);
+      expect(tester.binding.transientCallbackCount, 0);
+    });
+
+    testWidgets('with animations disabled no sweep starts', (tester) async {
+      final notifier = _TogglingHomeNotifier(testTask);
+      await tester.pumpWidget(buildList(notifier, noMotion: true));
+      await tester.pump();
+
+      await tester.tap(find.byIcon(Icons.check_box_outline_blank));
+      await tester.pump();
+
+      expect(find.byType(FlameEdge), findsNothing);
+      expect(find.byType(Card), findsOneWidget);
+      expect(cardColor(tester), ForgePalette.steel);
+      expect(notifier.toggles, 1);
+    });
+
+    testWidgets('a task completed when the list loads starts forged',
+        (tester) async {
+      await tester.pumpWidget(
+        buildTestWidget(testTask.copyWith(completed: true)),
+      );
+
+      expect(find.byType(FlameEdge), findsNothing);
+      expect(find.byType(Card), findsOneWidget);
+      expect(cardColor(tester), ForgePalette.steel);
+    });
+  });
 }
 
 class _RecordingHomeNotifier extends HomeNotifier {
@@ -224,4 +316,20 @@ class _RecordingHomeNotifier extends HomeNotifier {
 
   @override
   void undoDelete(String taskId) => undone.add(taskId);
+}
+
+class _TogglingHomeNotifier extends HomeNotifier {
+  final Task task;
+  int toggles = 0;
+
+  _TogglingHomeNotifier(this.task);
+
+  @override
+  Future<List<Task>> build() async => [task];
+
+  @override
+  Future<void> toggleTask({required Task task, required DateTime date}) async {
+    toggles++;
+    state = AsyncData([task.copyWith(completed: !task.completed)]);
+  }
 }
