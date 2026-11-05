@@ -111,12 +111,12 @@ void main() {
       );
     });
 
-    testWidgets('displays "Auto Admin" text in the header',
+    testWidgets('displays "SelfAnvil" text in the header',
         (WidgetTester tester) async {
       await tester.pumpWidget(buildTestWidget());
       await tester.pumpAndSettle();
 
-      expect(find.text('Auto Admin'), findsOneWidget);
+      expect(find.text('SelfAnvil'), findsOneWidget);
     });
 
     testWidgets('displays "Inicio" and "Cerrar sesión" labels',

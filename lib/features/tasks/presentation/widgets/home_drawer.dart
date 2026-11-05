@@ -54,7 +54,7 @@ class HomeDrawer extends ConsumerWidget {
             color: colorScheme.primaryContainer,
           ),
           child: Text(
-            'Auto Admin',
+            'SelfAnvil',
             style: textTheme.headlineSmall?.copyWith(
               color: colorScheme.onPrimaryContainer,
             ),

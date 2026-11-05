@@ -1,4 +1,4 @@
-package com.example.auto_admin_app
+package com.selfanvil.app
 
 import io.flutter.embedding.android.FlutterActivity
 

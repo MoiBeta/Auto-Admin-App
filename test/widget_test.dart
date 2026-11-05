@@ -1,4 +1,4 @@
-// Basic smoke test for the Auto Admin app.
+// Basic smoke test for the SelfAnvil app.
 //
 // Verifies that the app can be instantiated without errors.
 
