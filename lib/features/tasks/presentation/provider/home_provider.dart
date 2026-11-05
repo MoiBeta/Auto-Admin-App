@@ -49,8 +49,8 @@ class HomeNotifier extends _$HomeNotifier {
   /// Longer than the snackbar offering to undo, so undoing is always possible.
   static const _undoDeleteWindow = Duration(seconds: 5);
 
-  /// Task toggles waiting for a response, by task and day.
-  final Set<(String, DateTime)> _togglesInFlight = {};
+  /// Pending task toggles, one per task and day.
+  final Map<(String, DateTime), _ToggleSync> _toggleSyncs = {};
   bool _isLoadingTasks = false;
 
   @override
@@ -69,6 +69,10 @@ class HomeNotifier extends _$HomeNotifier {
         sync.timer?.cancel();
       }
       _subtaskSyncs.clear();
+      for (final sync in _toggleSyncs.values) {
+        sync.timer?.cancel();
+      }
+      _toggleSyncs.clear();
       for (final pending in _pendingDeletes.values) {
         pending.timer.cancel();
       }
@@ -92,6 +96,9 @@ class HomeNotifier extends _$HomeNotifier {
 
   /// Toggles not saved yet are newer than what the backend just returned.
   Task _withPendingToggles(Task task, DateTime date) {
+    final toggle = _toggleSyncs[(task.id, date)];
+    if (toggle != null) task = task.copyWith(completed: toggle.wanted);
+
     final sync = _subtaskSyncs[(task.id, date)];
     final current = task.subtasks ?? [];
     if (sync == null || current.isEmpty) return task;
@@ -284,39 +291,80 @@ class HomeNotifier extends _$HomeNotifier {
     });
   }
 
-  Future<void> toggleTask({
+  /// Shows the change at once and sends it when the user stops tapping.
+  ///
+  /// The toggle endpoint flips the state, so only one request per task is sent
+  /// at a time, and only when the state wanted differs from the saved one:
+  /// tapping twice sends nothing.
+  void toggleTask({
     required Task task,
     required DateTime date,
-  }) async {
-    // The toggle endpoint flips the state: a second request would undo the
-    // first one, in whichever order they arrive.
-    final key = (task.id, date);
-    if (!_togglesInFlight.add(key)) return;
+  }) {
+    final sync = _toggleSyncs.putIfAbsent(
+      (task.id, date),
+      () => _ToggleSync(confirmed: task.completed),
+    );
+    sync.wanted = !sync.wanted;
+    _patchTask(task.id, (t) => t.copyWith(completed: sync.wanted));
 
-    _patchTask(task.id, (t) => t.copyWith(completed: !task.completed));
+    sync.timer?.cancel();
+    sync.timer = Timer(
+      const Duration(seconds: 1),
+      () => _sendToggle(task.id, date),
+    );
+  }
+
+  Future<void> _sendToggle(String taskId, DateTime date) {
+    final sync = _toggleSyncs[(taskId, date)];
+    if (sync == null) return Future.value();
+    sync.timer = null;
+
+    // Its completion checks again what the user wants now.
+    if (sync.inFlight) return sync.request;
+
+    if (sync.wanted == sync.confirmed) {
+      _toggleSyncs.remove((taskId, date));
+      return Future.value();
+    }
+    return sync.request = _sendToggleRequest(taskId, date, sync);
+  }
+
+  Future<void> _sendToggleRequest(
+    String taskId,
+    DateTime date,
+    _ToggleSync sync,
+  ) async {
+    sync.inFlight = true;
     try {
       final updatedTask = await _toggleTask.call(
-        ToggleTaskData(
-          taskId: task.id,
-          completedAt: date,
-        ),
+        ToggleTaskData(taskId: taskId, completedAt: date),
       );
       if (!ref.mounted) return;
-      if (_isShowing(date)) {
-        _patchTask(
-          task.id,
-          (t) => t.copyWith(completed: updatedTask.completed),
-        );
+      sync.inFlight = false;
+      if (updatedTask.completed == sync.confirmed) {
+        // The backend did not flip it: trust it rather than ask again.
+        _endToggleSync(taskId, date, sync);
+        return;
       }
+      sync.confirmed = updatedTask.completed;
     } catch (e, st) {
       if (!ref.mounted) return;
-      // Revert optimistic update
-      if (_isShowing(date)) {
-        _patchTask(task.id, (t) => t.copyWith(completed: task.completed));
-      }
+      sync.inFlight = false;
+      _endToggleSync(taskId, date, sync);
       ref.read(errorHandlerProvider).handle(e, st);
-    } finally {
-      _togglesInFlight.remove(key);
+      return;
+    }
+
+    // Taps made during the request whose debounce already expired.
+    if (sync.timer == null) await _sendToggle(taskId, date);
+  }
+
+  /// Drops the taps not sent and shows the state saved on the backend.
+  void _endToggleSync(String taskId, DateTime date, _ToggleSync sync) {
+    sync.timer?.cancel();
+    _toggleSyncs.remove((taskId, date));
+    if (_isShowing(date)) {
+      _patchTask(taskId, (t) => t.copyWith(completed: sync.confirmed));
     }
   }
 
@@ -362,13 +410,17 @@ class HomeNotifier extends _$HomeNotifier {
     );
   }
 
-  /// Sends the pending subtask changes and deletions now, without waiting, and
+  /// Sends the pending toggles, subtask changes and deletions now, and
   /// completes when they are saved or reverted.
   Future<void> flushPendingChanges() async {
     await Future.wait([
       ..._subtaskSyncs.entries.toList().map((entry) {
         entry.value.timer?.cancel();
         return _syncSubtasksToBackend(entry.key.$1, entry.key.$2);
+      }),
+      ..._toggleSyncs.entries.toList().map((entry) {
+        entry.value.timer?.cancel();
+        return _sendToggle(entry.key.$1, entry.key.$2);
       }),
       ..._pendingDeletes.keys.toList().map(_commitDelete),
     ]);
@@ -572,6 +624,21 @@ class _PendingDelete {
     required this.date,
     required this.timer,
   });
+}
+
+/// Debounce and in-flight state of a task's completion toggle.
+class _ToggleSync {
+  /// Last state known to be saved on the backend.
+  bool confirmed;
+
+  /// Latest state chosen by the user.
+  bool wanted;
+
+  Timer? timer;
+  bool inFlight = false;
+  Future<void> request = Future.value();
+
+  _ToggleSync({required this.confirmed}) : wanted = confirmed;
 }
 
 /// Debounce and in-flight state of a task's subtask sync.

@@ -19,7 +19,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Longer than the subtask debounce window.
+/// Longer than the toggle and subtask debounce window.
 const _debounce = Duration(milliseconds: 1150);
 
 Task _task(
@@ -39,6 +39,8 @@ Task _task(
           .map((e) => Subtask(id: e.key, title: e.key, completed: e.value))
           .toList(),
     );
+
+Task _completed(String id) => _task({}, id: id).copyWith(completed: true);
 
 class _SyncCall {
   final Map<String, bool> payload;
@@ -571,6 +573,7 @@ void main() {
     test('a failed toggle only reverts its own task', () async {
       toggle('a');
       toggle('b');
+      await Future<void>.delayed(_debounce);
       repository.toggles.first.completeError(Exception('failed'));
       await settle();
 
@@ -580,23 +583,17 @@ void main() {
 
     test('a slow toggle response does not undo a later reorder', () async {
       toggle('a');
+      await Future<void>.delayed(_debounce);
       await container
           .read(homeProvider.notifier)
           .updateTaskPriorities(oldIndex: 2, newIndex: 0);
-      repository.toggles.single.complete(_task({}, id: 'a'));
+      repository.toggles.single.complete(_completed('a'));
       await settle();
 
       expect(
         container.read(homeProvider).value!.map((t) => t.id),
         ['c', 'a', 'b'],
       );
-    });
-
-    test('a second tap during a toggle request is ignored', () async {
-      toggle('a');
-      toggle('a');
-      expect(repository.toggles, hasLength(1));
-      expect(byId('a').completed, isTrue);
     });
 
     test('a failed delete does not undo a toggle made meanwhile', () async {
@@ -626,6 +623,114 @@ void main() {
       );
       expect(byId('a').priority, 100);
       expect(byId('b').completed, isTrue);
+    });
+  });
+
+  group('toggleTask', () {
+    Task byId(String id) =>
+        container.read(homeProvider).value!.firstWhere((t) => t.id == id);
+
+    void toggle(String id) {
+      container.read(homeProvider.notifier).toggleTask(
+            task: byId(id),
+            date: container.read(selectedDateProvider),
+          );
+    }
+
+    setUp(() async {
+      repository.tasks
+        ..clear()
+        ..add(_task({}, id: 'a'));
+      await container
+          .read(homeProvider.notifier)
+          .refreshTasks(container.read(selectedDateProvider));
+    });
+
+    test('is shown at once and sent when the taps stop', () async {
+      toggle('a');
+      expect(byId('a').completed, isTrue);
+      expect(repository.toggles, isEmpty);
+
+      await Future<void>.delayed(_debounce);
+      expect(repository.toggles, hasLength(1));
+    });
+
+    test('tapping twice sends nothing', () async {
+      toggle('a');
+      toggle('a');
+      await Future<void>.delayed(_debounce);
+
+      expect(repository.toggles, isEmpty);
+      expect(byId('a').completed, isFalse);
+    });
+
+    test('a tap during a request is shown at once and sent after it',
+        () async {
+      toggle('a');
+      await Future<void>.delayed(_debounce);
+      toggle('a');
+      expect(byId('a').completed, isFalse);
+
+      await Future<void>.delayed(_debounce);
+      expect(repository.toggles, hasLength(1));
+
+      repository.toggles.first.complete(_completed('a'));
+      await settle();
+      expect(repository.toggles, hasLength(2));
+      expect(byId('a').completed, isFalse);
+
+      repository.toggles.last.complete(_task({}, id: 'a'));
+      await settle();
+      expect(repository.toggles, hasLength(2));
+      expect(byId('a').completed, isFalse);
+    });
+
+    test('taps during a request that cancel out send nothing more', () async {
+      toggle('a');
+      await Future<void>.delayed(_debounce);
+      toggle('a');
+      toggle('a');
+      await Future<void>.delayed(_debounce);
+
+      repository.toggles.single.complete(_completed('a'));
+      await settle();
+      expect(repository.toggles, hasLength(1));
+      expect(byId('a').completed, isTrue);
+    });
+
+    test('a failed request shows the saved state and drops later taps',
+        () async {
+      toggle('a');
+      await Future<void>.delayed(_debounce);
+      toggle('a');
+      toggle('a');
+
+      repository.toggles.single.completeError(Exception('failed'));
+      await settle();
+      expect(byId('a').completed, isFalse);
+
+      await Future<void>.delayed(_debounce);
+      expect(repository.toggles, hasLength(1));
+    });
+
+    test('flushPendingChanges sends it right away', () async {
+      toggle('a');
+      final flush = container.read(homeProvider.notifier).flushPendingChanges();
+      await settle();
+      expect(repository.toggles, hasLength(1));
+
+      repository.toggles.single.complete(_completed('a'));
+      await flush;
+      expect(byId('a').completed, isTrue);
+    });
+
+    test('a reload keeps a toggle not yet saved', () async {
+      toggle('a');
+      await container
+          .read(homeProvider.notifier)
+          .refreshTasks(container.read(selectedDateProvider));
+
+      expect(byId('a').completed, isTrue);
     });
   });
 
