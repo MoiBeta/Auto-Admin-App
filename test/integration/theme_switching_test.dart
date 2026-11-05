@@ -1,6 +1,5 @@
 import 'package:auto_admin_app/features/auth/presentation/pages/auth_page.dart';
 import 'package:auto_admin_app/global/theme/app_theme.dart';
-import 'package:auto_admin_app/global/theme/color_schemes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -356,16 +355,6 @@ void main() {
       final darkSurface = AppTheme.darkTheme.colorScheme.surface;
 
       expect(lightSurface, isNot(equals(darkSurface)));
-    });
-
-    testWidgets('both themes use the same seed-derived color scheme',
-        (tester) async {
-      // Verify both color schemes share the same hue family
-      final lightHue = HSLColor.fromColor(lightColorScheme.primary).hue;
-      final darkHue = HSLColor.fromColor(darkColorScheme.primary).hue;
-
-      // Hues from the same seed should be within a close range
-      expect((lightHue - darkHue).abs(), lessThan(15.0));
     });
 
     testWidgets('ThemeMode.system is supported without errors', (tester) async {

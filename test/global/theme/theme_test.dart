@@ -14,14 +14,10 @@ void main() {
       expect(darkColorScheme.brightness, Brightness.dark);
     });
 
-    test('both schemes are generated from the same seed color', () {
-      // Both schemes generated from Color(0xFF6D92F8) share the same
-      // primary hue. The primary color value in the light scheme should
-      // have the same hue as in the dark scheme.
-      final lightHue = HSLColor.fromColor(lightColorScheme.primary).hue;
-      final darkHue = HSLColor.fromColor(darkColorScheme.primary).hue;
-      // Hues derived from the same seed should be within a close range
-      expect((lightHue - darkHue).abs(), lessThan(15.0));
+    test('both schemes use the colors of the app icon', () {
+      expect(lightColorScheme.primary, const Color(0xFF082858));
+      expect(darkColorScheme.primary, const Color(0xFFFCB400));
+      expect(darkColorScheme.surface, const Color(0xFF011334));
     });
   });
 
