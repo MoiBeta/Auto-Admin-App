@@ -115,7 +115,7 @@ class _FlamePainter extends CustomPainter {
 
   void _paintFallback(Canvas canvas, Size size, double t, double intensity) {
     const halfWidth = 16.0;
-    final x = size.width * (1 - t);
+    final x = size.width * t;
     final rect = Rect.fromLTRB(
         x - halfWidth, FlameEdge.overflowTop, x + halfWidth, size.height);
     canvas.drawRect(

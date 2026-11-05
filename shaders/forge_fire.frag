@@ -53,7 +53,8 @@ float fbm(vec2 p) {
 
 void main() {
   vec2 pos = FlutterFragCoord().xy;
-  float dx = pos.x - uSize.x * (1.0 - uProgress);
+  // Distance behind the edge: positive over the forged side, on its left.
+  float dx = uSize.x * uProgress - pos.x;
 
   // Most of the card is out of reach: skip the noise there.
   if (uIntensity <= 0.0 || dx < -kHalfWidth - kWobble ||

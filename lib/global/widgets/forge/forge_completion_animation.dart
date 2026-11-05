@@ -17,13 +17,13 @@ class ForgeSweep {
   /// Time progress, 0 to 1.
   final Animation<double> linear;
 
-  /// Curved progress `t`. The edge is at `x = width * (1 - t)`.
+  /// Curved progress `t`. The edge is at `x = width * t`.
   final Animation<double> progress;
 
   const ForgeSweep({required this.linear, required this.progress});
 }
 
-/// Forges a card from right to left when [forged] becomes true.
+/// Forges a card from left to right when [forged] becomes true.
 ///
 /// The controllers only exist while something is animating. The change is
 /// purely visual: whoever owns [forged] has already saved it.
@@ -226,7 +226,7 @@ class _RevealClipper extends CustomClipper<Rect> {
 
   @override
   Rect getClip(Size size) =>
-      Rect.fromLTRB(size.width * (1 - t.value), 0, size.width, size.height);
+      Rect.fromLTRB(0, 0, size.width * t.value, size.height);
 
   @override
   bool shouldReclip(_RevealClipper oldClipper) => oldClipper.t != t;

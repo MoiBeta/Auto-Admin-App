@@ -58,7 +58,7 @@ class _EmberBurstState extends State<EmberBurst>
       final born = 0.05 + random.nextDouble() * 0.85;
       return _Ember(
         bornMs: born * sweepMs,
-        x: 1 - Curves.easeInOutCubic.transform(born),
+        x: Curves.easeInOutCubic.transform(born),
         y: 0.2 + random.nextDouble() * 0.7,
         rise: 40 + random.nextDouble() * 50,
         drift: (random.nextDouble() - 0.5) * 48,

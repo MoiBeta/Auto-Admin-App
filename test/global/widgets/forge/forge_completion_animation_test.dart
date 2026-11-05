@@ -95,7 +95,7 @@ void main() {
     expect(runningTickers(tester), 0);
   });
 
-  testWidgets('the reveal goes from the right edge to the left one',
+  testWidgets('the reveal goes from the left edge to the right one',
       (tester) async {
     await tester.pumpWidget(_harness(forged: false));
     await tester.pumpWidget(_harness(forged: true));
@@ -104,12 +104,12 @@ void main() {
     final clip = tester.renderObject<RenderClipRect>(
       find.ancestor(of: find.text('hot'), matching: find.byType(ClipRect)),
     );
-    expect(clip.clipper!.getClip(const Size(300, 80)).right, 300);
-    final atStart = clip.clipper!.getClip(const Size(300, 80)).left;
+    expect(clip.clipper!.getClip(const Size(300, 80)).left, 0);
+    final atStart = clip.clipper!.getClip(const Size(300, 80)).right;
 
     await tester.pump(const Duration(milliseconds: 450));
-    final halfway = clip.clipper!.getClip(const Size(300, 80)).left;
-    expect(halfway, lessThan(atStart));
+    final halfway = clip.clipper!.getClip(const Size(300, 80)).right;
+    expect(halfway, greaterThan(atStart));
     expect(halfway, closeTo(150, 10));
   });
 
