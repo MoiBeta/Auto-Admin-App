@@ -19,7 +19,7 @@ dependencies:
   go_router: ^14.8.0
   riverpod_annotation: ^3.0.3
   intl: ^0.20.2
-  lottie: ^3.3.1
+  lottie: ^3.8.2
   flutter_hooks: ^0.21.3+1
   hooks_riverpod: ^3.0.3
   flutter_secure_storage: ^10.0.0
