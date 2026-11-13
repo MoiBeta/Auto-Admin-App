@@ -732,6 +732,51 @@ void main() {
 
       expect(byId('a').completed, isTrue);
     });
+
+    group('of a one-time task', () {
+      Task once({required bool completed}) => _task({}, id: 'a')
+          .copyWith(taskFrequency: TaskFrequency.once, completed: completed);
+
+      Future<void> show(DateTime day) async {
+        repository.tasks
+          ..clear()
+          ..add(once(completed: true));
+        container.read(selectedDateProvider.notifier).selectDate(day);
+        await settle();
+      }
+
+      test('undone on a past day, it leaves that day', () async {
+        final today = container.read(todayProvider);
+        await show(DateTime(today.year, today.month, today.day - 1));
+        expect(byId('a').completed, isTrue);
+
+        toggle('a');
+        await Future<void>.delayed(_debounce);
+        // Pending again, so the backend only returns it for today.
+        repository.tasks.clear();
+        repository.toggles.single.complete(once(completed: false));
+        await settle();
+
+        expect(container.read(homeProvider).value, isEmpty);
+      });
+
+      test('undone today, it stays on the list', () async {
+        await show(container.read(todayProvider));
+        var loads = 0;
+        repository.onGetAllTasks = (_) async {
+          loads++;
+          return repository.tasks;
+        };
+
+        toggle('a');
+        await Future<void>.delayed(_debounce);
+        repository.toggles.single.complete(once(completed: false));
+        await settle();
+
+        expect(loads, 0);
+        expect(byId('a').completed, isFalse);
+      });
+    });
   });
 
   group('days', () {

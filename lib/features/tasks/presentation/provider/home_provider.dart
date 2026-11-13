@@ -347,6 +347,7 @@ class HomeNotifier extends _$HomeNotifier {
         return;
       }
       sync.confirmed = updatedTask.completed;
+      _reloadIfMovedToToday(updatedTask, date);
     } catch (e, st) {
       if (!ref.mounted) return;
       sync.inFlight = false;
@@ -472,6 +473,7 @@ class HomeNotifier extends _$HomeNotifier {
             unawaited(refreshTasks(date));
           } else {
             _replaceTask(updatedTask);
+            _reloadIfMovedToToday(updatedTask, date);
           }
         }
       }
@@ -496,6 +498,14 @@ class HomeNotifier extends _$HomeNotifier {
   }
 
   bool _isShowing(DateTime date) => ref.read(selectedDateProvider) == date;
+
+  /// A one-time task whose completion was undone is pending again, and pending
+  /// ones are shown on the current day only: it no longer belongs to [date].
+  void _reloadIfMovedToToday(Task task, DateTime date) {
+    if (task.taskFrequency != TaskFrequency.once || task.completed) return;
+    if (date == ref.read(todayProvider) || !_isShowing(date)) return;
+    unawaited(refreshTasks(date));
+  }
 
   Future<void> _renumberPriorities(List<Task> ordered) async {
     final date = ref.read(selectedDateProvider);

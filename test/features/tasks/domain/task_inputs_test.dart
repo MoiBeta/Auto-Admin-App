@@ -119,6 +119,18 @@ void main() {
     });
   });
 
+  test('a one-time task is sent and read as ONCE', () {
+    final json = NewTaskData(
+      title: 'Renovar pasaporte',
+      startDate: DateTime(2026, 11, 12),
+      frequency: TaskFrequency.once,
+      priority: 100,
+    ).toJson();
+    expect(json['frequency'], 'ONCE');
+    expect(TaskModel.parseFrequency('ONCE'), TaskFrequency.once);
+    expect(TaskFrequency.supported, contains(TaskFrequency.once));
+  });
+
   test('only backend-supported frequencies are offered', () {
     expect(TaskFrequency.supported, isNot(contains(TaskFrequency.none)));
     expect(TaskFrequency.supported, isNot(contains(TaskFrequency.custom)));
