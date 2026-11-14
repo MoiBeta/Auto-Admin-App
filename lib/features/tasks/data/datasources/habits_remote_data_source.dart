@@ -39,13 +39,18 @@ class HabitsRemoteDataSource implements TasksDataSource {
     return TaskModel.fromJson(response.data);
   }
 
-  String _dateQuery(DateTime? date) =>
-      date == null ? '' : '?date=${DateFormat('yyyy-MM-dd').format(date)}';
+  /// The day being viewed, and the device's current day: a pending one-time
+  /// task is shown only on the latter.
+  String _dateQuery(DateTime? date) {
+    final format = DateFormat('yyyy-MM-dd');
+    final today = 'today=${format.format(DateTime.now())}';
+    return date == null ? '?$today' : '?date=${format.format(date)}&$today';
+  }
 
   @override
   Future<List<TaskModel>> getAllTasks(DateTime date) async {
     final response = await client.get(
-      '/habits?date=${DateFormat('yyyy-MM-dd').format(date)}',
+      '/habits${_dateQuery(date)}',
     );
 
     log(response.data.toString());
@@ -62,7 +67,7 @@ class HabitsRemoteDataSource implements TasksDataSource {
     required DateTime date,
   }) async {
     final response = await client.post(
-      '/habits/$taskId/subtasks/sync?date=${DateFormat('yyyy-MM-dd').format(date)}',
+      '/habits/$taskId/subtasks/sync${_dateQuery(date)}',
       data: {
         'subtasks': subtasks.map((s) => s.toJson()).toList(),
       },
@@ -73,7 +78,7 @@ class HabitsRemoteDataSource implements TasksDataSource {
   @override
   Future<TaskModel> toggleTask(ToggleTaskData data) async {
     final response = await client.post(
-      '/habits/${data.taskId}/toggle?date=${DateFormat('yyyy-MM-dd').format(data.completedAt)}',
+      '/habits/${data.taskId}/toggle${_dateQuery(data.completedAt)}',
     );
     return TaskModel.fromJson(response.data);
   }

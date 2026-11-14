@@ -370,6 +370,8 @@ class AddingTaskScreen extends HookConsumerWidget {
     switch (freq) {
       case TaskFrequency.none:
         return 'Ninguno';
+      case TaskFrequency.once:
+        return 'Solo una vez';
       case TaskFrequency.daily:
         return 'Diariamente';
       case TaskFrequency.weekly:
