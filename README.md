@@ -39,7 +39,7 @@ flowchart LR
     fcm -- "push" --> app
 ```
 
-Both services run as Docker containers on an AWS Lightsail instance. The database is a managed PostgreSQL on Supabase.
+Both services run as Docker containers on an AWS Lightsail instance, behind a Caddy reverse proxy that serves them over HTTPS. The database is a managed PostgreSQL on Supabase.
 
 ### Inside the app
 
@@ -105,6 +105,5 @@ The suite has 174 unit and widget tests. They cover the network interceptors, th
 
 ## Roadmap
 
-- Serve the backend over HTTPS behind a domain.
 - Sign release builds with a dedicated keystore and publish to Google Play.
 - iOS build.
