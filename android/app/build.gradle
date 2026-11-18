@@ -8,6 +8,20 @@ plugins {
     id "dev.flutter.flutter-gradle-plugin"
 }
 
+// Release signing. The upload keystore is never committed:
+// - On Codemagic it comes from the code signing identities (CM_* variables).
+// - Locally it can be described in android/key.properties (git-ignored).
+// Without either, local release builds fall back to the debug key, so the
+// project still builds for anyone who clones it. On CI that fallback is an
+// error: a build signed with the wrong key cannot update installed apps.
+def keystorePropertiesFile = rootProject.file("key.properties")
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystorePropertiesFile.withReader("UTF-8") { keystoreProperties.load(it) }
+}
+def ciKeystorePath = System.getenv("CM_KEYSTORE_PATH")
+def hasReleaseKey = ciKeystorePath != null || keystorePropertiesFile.exists()
+
 android {
     namespace = "com.selfanvil.app"
     compileSdk = flutter.compileSdkVersion
@@ -34,11 +48,32 @@ android {
         multiDexEnabled true
     }
 
+    signingConfigs {
+        release {
+            if (ciKeystorePath != null) {
+                storeFile = file(ciKeystorePath)
+                storePassword = System.getenv("CM_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("CM_KEY_ALIAS")
+                keyPassword = System.getenv("CM_KEY_PASSWORD")
+            } else if (keystorePropertiesFile.exists()) {
+                storeFile = file(keystoreProperties["storeFile"])
+                storePassword = keystoreProperties["storePassword"]
+                keyAlias = keystoreProperties["keyAlias"]
+                keyPassword = keystoreProperties["keyPassword"]
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.debug
+            if (hasReleaseKey) {
+                signingConfig = signingConfigs.release
+            } else if (System.getenv("CI") != null) {
+                throw new GradleException(
+                        "No release keystore on CI: add the code signing identity to the workflow.")
+            } else {
+                signingConfig = signingConfigs.debug
+            }
         }
     }
 }
