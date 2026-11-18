@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 class _FakeAuthNotifier extends AuthNotifier {
   String? loginEmail;
   bool registered = false;
+  int googleLogins = 0;
 
   @override
   Future<LoginState> build() async => const LoginState(isLoading: false);
@@ -16,6 +17,9 @@ class _FakeAuthNotifier extends AuthNotifier {
   @override
   Future<void> login({required String email, required String password}) async =>
       loginEmail = email;
+
+  @override
+  Future<void> loginWithGoogle() async => googleLogins++;
 
   @override
   Future<void> register({
@@ -63,6 +67,15 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       expect(auth.loginEmail, 'ana@example.com');
+    });
+
+    testWidgets('signs in with Google', (tester) async {
+      await pump(tester, const LoginScreen());
+      await tester.ensureVisible(find.text('Continuar con Google'));
+      await tester.tap(find.text('Continuar con Google'));
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(auth.googleLogins, 1);
     });
 
     testWidgets('can show the password', (tester) async {

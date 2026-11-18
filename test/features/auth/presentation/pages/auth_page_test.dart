@@ -1,18 +1,51 @@
+import 'package:auto_admin_app/features/auth/injection/auth_providers.dart';
 import 'package:auto_admin_app/features/auth/presentation/pages/auth_page.dart';
+import 'package:auto_admin_app/features/auth/presentation/providers/auth_provider.dart';
 import 'package:auto_admin_app/global/theme/app_theme.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+class _FakeAuthNotifier extends AuthNotifier {
+  int googleLogins = 0;
+
+  @override
+  Future<LoginState> build() async => const LoginState(isLoading: false);
+
+  @override
+  Future<void> loginWithGoogle() async => googleLogins++;
+}
+
 void main() {
+  late _FakeAuthNotifier auth;
+
   Widget buildTestWidget({ThemeData? theme}) {
-    return MaterialApp(
-      theme: theme ?? AppTheme.lightTheme,
-      home: const MediaQuery(
-        data: MediaQueryData(size: Size(400, 900)),
-        child: AuthPage(),
+    auth = _FakeAuthNotifier();
+    return ProviderScope(
+      overrides: [authNotifierProvider.overrideWith(() => auth)],
+      child: MaterialApp(
+        theme: theme ?? AppTheme.lightTheme,
+        home: const MediaQuery(
+          data: MediaQueryData(size: Size(400, 900)),
+          child: AuthPage(),
+        ),
       ),
     );
   }
+
+  testWidgets('offers signing in with Google', (tester) async {
+    tester.view.physicalSize = const Size(400, 1200);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(buildTestWidget());
+    await tester.pump();
+    await tester.tap(find.text('Continuar con Google'));
+    await tester.pump();
+
+    expect(auth.googleLogins, 1);
+  });
 
   group('AuthPage - Button Hierarchy', () {
     testWidgets('uses FilledButton for primary login action', (tester) async {

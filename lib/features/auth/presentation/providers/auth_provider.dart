@@ -4,6 +4,7 @@ import 'dart:developer';
 import 'package:auto_admin_app/core/errors/error_handler.dart';
 import 'package:auto_admin_app/features/auth/domain/entity/auth_credential.dart';
 import 'package:auto_admin_app/features/auth/domain/usecases/auth_login.dart';
+import 'package:auto_admin_app/features/auth/domain/usecases/auth_login_with_google.dart';
 import 'package:auto_admin_app/features/auth/domain/usecases/auth_logout.dart';
 import 'package:auto_admin_app/features/auth/domain/usecases/auth_register.dart';
 import 'package:auto_admin_app/features/auth/domain/usecases/change_password.dart';
@@ -21,6 +22,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 class AuthNotifier extends AsyncNotifier<LoginState> {
   late GetAuthState _getAuthState;
   late AuthLogin _authLogin;
+  late AuthLoginWithGoogle _authLoginWithGoogle;
   late AuthRegister _authRegister;
   late ConfirmEmail _confirmEmail;
   late ResendConfirmationCode _resendConfirmationCode;
@@ -33,6 +35,7 @@ class AuthNotifier extends AsyncNotifier<LoginState> {
   Future<LoginState> build() async {
     _getAuthState = ref.watch(getAuthStateUseCaseProvider);
     _authLogin = ref.watch(authLoginUseCaseProvider);
+    _authLoginWithGoogle = ref.watch(authLoginWithGoogleUseCaseProvider);
     _authRegister = ref.watch(authRegisterUseCaseProvider);
     _confirmEmail = ref.watch(confirmEmailUseCaseProvider);
     _resendConfirmationCode = ref.watch(resendConfirmationCodeUseCaseProvider);
@@ -77,6 +80,22 @@ class AuthNotifier extends AsyncNotifier<LoginState> {
       state = AsyncData(
         state.value!.copyWith(isLoading: false),
       );
+    }
+  }
+
+  /// Signs in with the Google account the user picks. Closing the picker
+  /// leaves everything as it was, without an error.
+  Future<void> loginWithGoogle() async {
+    state = AsyncData(state.value!.copyWith(isLoading: true));
+    try {
+      final authCredential = await _authLoginWithGoogle();
+      state = AsyncData(
+        state.value!.copyWith(isLoading: false, credentials: authCredential),
+      );
+      if (authCredential != null) _registerFcmToken();
+    } catch (e, st) {
+      ref.read(errorHandlerProvider).handle(e, st);
+      state = AsyncData(state.value!.copyWith(isLoading: false));
     }
   }
 

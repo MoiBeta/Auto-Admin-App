@@ -69,6 +69,22 @@ class AuthRemoteDataSource extends AuthDataSource {
   }
 
   @override
+  Future<AuthCredentialModel?> loginWithGoogle(String idToken) async {
+    final response = await client.post(
+      '/auth/google',
+      data: {'idToken': idToken},
+    );
+    if (response.statusCode != 200) return null;
+
+    final tokenData = response.data['tokens'];
+    await tokenManager.saveTokens(
+      accessToken: tokenData['accessToken'],
+      refreshToken: tokenData['refreshToken'],
+    );
+    return AuthCredentialModel.fromJson(response.data['user']);
+  }
+
+  @override
   Future<void> logout() async {
     try {
       // Invalidates the refresh token on the server.

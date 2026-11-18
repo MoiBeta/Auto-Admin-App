@@ -26,6 +26,7 @@ dependencies:
   dio: ^5.9.2
   flutter_dotenv: ^6.0.1
   flutter_timezone: ^5.1.1
+  google_sign_in: ^7.2.0
 
 dev_dependencies:
   flutter_test:
@@ -47,4 +48,5 @@ flutter:
 
   assets:
     - assets/animations/
+    - assets/images/google_g.png
     - .env

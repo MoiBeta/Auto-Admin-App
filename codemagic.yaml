@@ -3,6 +3,7 @@
 # Variables que deben existir en Codemagic (grupo "auto_admin"):
 #   AUTH_BASE_URL             URL base del auth-service
 #   HABITS_BASE_URL           URL base del habit-service
+#   GOOGLE_SERVER_CLIENT_ID   ID del cliente OAuth web (audiencia de los ID tokens de Google)
 #   FIREBASE_SERVICE_ACCOUNT  contenido del JSON de la service account (marcada como secreta)
 
 workflows:
@@ -29,6 +30,7 @@ workflows:
           cat > .env <<EOF
           AUTH_BASE_URL=$AUTH_BASE_URL
           HABITS_BASE_URL=$HABITS_BASE_URL
+          GOOGLE_SERVER_CLIENT_ID=$GOOGLE_SERVER_CLIENT_ID
           EOF
       - name: Dependencias
         script: flutter pub get

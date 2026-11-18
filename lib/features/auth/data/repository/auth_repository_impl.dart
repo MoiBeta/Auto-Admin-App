@@ -1,4 +1,7 @@
+import 'dart:developer';
+
 import 'package:auto_admin_app/features/auth/data/datasources/auth_data_source.dart';
+import 'package:auto_admin_app/features/auth/data/datasources/google_id_token_source.dart';
 import 'package:auto_admin_app/features/auth/domain/entity/auth_credential.dart';
 import 'package:auto_admin_app/features/auth/domain/repository/auth_repository.dart';
 import 'package:auto_admin_app/features/auth/domain/usecases/inputs/change_password_data.dart';
@@ -7,7 +10,8 @@ import 'package:auto_admin_app/features/auth/domain/usecases/inputs/sign_up_data
 
 class AuthRepositoryImpl extends AuthRepository {
   final AuthDataSource authDataSource;
-  AuthRepositoryImpl(this.authDataSource);
+  final GoogleIdTokenSource googleIdTokenSource;
+  AuthRepositoryImpl(this.authDataSource, this.googleIdTokenSource);
 
   @override
   Future<bool> changePassword(ChangePasswordData changePasswordData) async {
@@ -30,8 +34,22 @@ class AuthRepositoryImpl extends AuthRepository {
   }
 
   @override
+  Future<AuthCredential?> loginWithGoogle() async {
+    final idToken = await googleIdTokenSource.getIdToken();
+    if (idToken == null) return null;
+    final model = await authDataSource.loginWithGoogle(idToken);
+    return model?.toEntity();
+  }
+
+  @override
   Future<void> logout() async {
     await authDataSource.logout();
+    try {
+      await googleIdTokenSource.signOut();
+    } catch (e) {
+      // The session is already closed; only the account picker is affected.
+      log('Failed to sign out from Google: $e');
+    }
   }
 
   @override

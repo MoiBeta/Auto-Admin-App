@@ -50,7 +50,7 @@ void main() {
       await dio.post(path);
       fail('The request should fail');
     } catch (e) {
-      expect(sessionExpired, path != '/auth/login');
+      expect(sessionExpired, !path.startsWith('/auth/'));
       return ErrorHandler.extractAppError(e).message;
     }
   }
@@ -60,6 +60,14 @@ void main() {
     expect(
       await errorMessageOf('/auth/login'),
       'Correo o contraseña incorrectos.',
+    );
+  });
+
+  test('a rejected Google token neither refreshes nor expires the session',
+      () async {
+    expect(
+      await errorMessageOf('/auth/google'),
+      'No se pudo verificar tu cuenta de Google.',
     );
   });
 }

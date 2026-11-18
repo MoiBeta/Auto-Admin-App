@@ -1,6 +1,9 @@
+import 'package:auto_admin_app/features/auth/injection/auth_providers.dart';
 import 'package:auto_admin_app/features/auth/presentation/pages/auth_page.dart';
+import 'package:auto_admin_app/features/auth/presentation/providers/auth_provider.dart';
 import 'package:auto_admin_app/global/theme/app_theme.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
@@ -82,9 +85,15 @@ void main() {
     required ThemeData theme,
     required Widget home,
   }) {
-    return MaterialApp(
-      theme: theme,
-      home: home,
+    // AuthPage has a Google sign-in button, which reads the auth state.
+    return ProviderScope(
+      overrides: [
+        authNotifierProvider.overrideWith(_SignedOutAuthNotifier.new)
+      ],
+      child: MaterialApp(
+        theme: theme,
+        home: home,
+      ),
     );
   }
 
@@ -469,4 +478,9 @@ void main() {
       expect(find.text('Page A'), findsOneWidget);
     });
   });
+}
+
+class _SignedOutAuthNotifier extends AuthNotifier {
+  @override
+  Future<LoginState> build() async => const LoginState(isLoading: false);
 }

@@ -1,4 +1,5 @@
 import 'package:auto_admin_app/core/constants/routes.dart';
+import 'package:auto_admin_app/features/auth/presentation/widgets/google_sign_in_button.dart';
 import 'package:auto_admin_app/global/theme/spacing.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -38,6 +39,8 @@ class AuthPage extends StatelessWidget {
               },
               child: Text('Iniciar sesión'),
             ),
+            const SizedBox(height: Spacing.sm),
+            const GoogleSignInButton(),
             TextButton(
               onPressed: () async {
                 context.pushReplacementNamed(Routes.register);

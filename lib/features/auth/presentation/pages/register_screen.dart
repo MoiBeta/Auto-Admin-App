@@ -1,6 +1,7 @@
 import 'package:auto_admin_app/core/constants/routes.dart';
 import 'package:auto_admin_app/core/constants/validators.dart';
 import 'package:auto_admin_app/features/auth/injection/auth_providers.dart';
+import 'package:auto_admin_app/features/auth/presentation/widgets/google_sign_in_button.dart';
 import 'package:auto_admin_app/global/theme/spacing.dart';
 import 'package:auto_admin_app/global/widgets/loading_button.dart';
 import 'package:auto_admin_app/global/widgets/password_field.dart';
@@ -86,6 +87,8 @@ class RegisterScreen extends HookConsumerWidget {
                       onPressed: submit,
                       label: 'Registrarse',
                     ),
+                    const SizedBox(height: Spacing.sm),
+                    const GoogleSignInButton(),
                     const SizedBox(height: Spacing.sm),
                     TextButton(
                       onPressed: isLoading

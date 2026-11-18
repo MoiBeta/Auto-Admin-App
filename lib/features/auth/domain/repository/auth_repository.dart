@@ -8,6 +8,9 @@ abstract class AuthRepository {
 
   Future<AuthCredential?> login(LoginData loginData);
 
+  /// Null when the user cancels.
+  Future<AuthCredential?> loginWithGoogle();
+
   Future<AuthCredential?> registerUser(SignUpData signUpData);
 
   Future<bool> confirmEmail();

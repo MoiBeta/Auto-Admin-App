@@ -4,9 +4,11 @@ import 'package:auto_admin_app/core/network/interceptors/error_interceptor.dart'
 import 'package:auto_admin_app/core/network/interceptors/refresh_interceptor.dart';
 import 'package:auto_admin_app/features/auth/data/datasources/auth_data_source.dart';
 import 'package:auto_admin_app/features/auth/data/datasources/auth_remote_data_source.dart';
+import 'package:auto_admin_app/features/auth/data/datasources/google_id_token_source.dart';
 import 'package:auto_admin_app/features/auth/data/repository/auth_repository_impl.dart';
 import 'package:auto_admin_app/features/auth/domain/repository/auth_repository.dart';
 import 'package:auto_admin_app/features/auth/domain/usecases/auth_login.dart';
+import 'package:auto_admin_app/features/auth/domain/usecases/auth_login_with_google.dart';
 import 'package:auto_admin_app/features/auth/domain/usecases/auth_logout.dart';
 import 'package:auto_admin_app/features/auth/domain/usecases/auth_register.dart';
 import 'package:auto_admin_app/features/auth/domain/usecases/change_password.dart';
@@ -63,12 +65,28 @@ final Provider<AuthDataSource> authSourceProvider = Provider<AuthDataSource>(
   ),
 );
 
+/// OAuth web client ID of the backend, the audience of Google ID tokens.
+final googleServerClientIdProvider =
+    Provider<String>((ref) => dotenv.env['GOOGLE_SERVER_CLIENT_ID'] ?? '');
+
+final googleIdTokenSourceProvider = Provider<GoogleIdTokenSource>(
+  (ref) => GoogleSignInIdTokenSource(
+    serverClientId: ref.watch(googleServerClientIdProvider),
+  ),
+);
+
 final Provider<AuthRepository> authRepositoryProvider =
-    Provider<AuthRepository>(
-        (ref) => AuthRepositoryImpl(ref.watch(authSourceProvider)));
+    Provider<AuthRepository>((ref) => AuthRepositoryImpl(
+          ref.watch(authSourceProvider),
+          ref.watch(googleIdTokenSourceProvider),
+        ));
 
 final Provider<AuthLogin> authLoginUseCaseProvider =
     Provider<AuthLogin>((ref) => AuthLogin(ref.watch(authRepositoryProvider)));
+
+final Provider<AuthLoginWithGoogle> authLoginWithGoogleUseCaseProvider =
+    Provider<AuthLoginWithGoogle>(
+        (ref) => AuthLoginWithGoogle(ref.watch(authRepositoryProvider)));
 
 final Provider<AuthLogout> authLogoutUseCaseProvider = Provider<AuthLogout>(
     (ref) => AuthLogout(ref.watch(authRepositoryProvider)));

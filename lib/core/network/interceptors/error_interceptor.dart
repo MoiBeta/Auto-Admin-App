@@ -52,9 +52,11 @@ class ErrorInterceptor extends Interceptor {
             originalError: err,
           ),
         401 => AppError(
-            message: err.requestOptions.path == '/auth/login'
-                ? 'Correo o contraseña incorrectos.'
-                : 'Tu sesión ha expirado. Inicia sesión nuevamente.',
+            message: switch (err.requestOptions.path) {
+              '/auth/login' => 'Correo o contraseña incorrectos.',
+              '/auth/google' => 'No se pudo verificar tu cuenta de Google.',
+              _ => 'Tu sesión ha expirado. Inicia sesión nuevamente.',
+            },
             type: AppErrorType.unauthorized,
             statusCode: statusCode,
             originalError: err,
@@ -72,7 +74,9 @@ class ErrorInterceptor extends Interceptor {
             originalError: err,
           ),
         409 => AppError(
-            message: serverMessage ?? 'Conflicto con el estado actual.',
+            message: err.requestOptions.path == '/auth/google'
+                ? 'Este correo ya está vinculado a otra cuenta de Google.'
+                : serverMessage ?? 'Conflicto con el estado actual.',
             type: AppErrorType.conflict,
             statusCode: statusCode,
             originalError: err,

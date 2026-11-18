@@ -8,6 +8,7 @@ abstract class AuthDataSource {
   Future<bool> confirmEmail();
   Future<AuthCredentialModel?> getAuthState();
   Future<AuthCredentialModel?> login(LoginData loginData);
+  Future<AuthCredentialModel?> loginWithGoogle(String idToken);
   Future<void> logout();
   Future<AuthCredentialModel?> registerUser(SignUpData signUpData);
   Future<void> resendConfirmationCode();

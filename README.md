@@ -13,7 +13,7 @@ This repository is the mobile client. It talks to two backend services that I al
 
 ## Features
 
-- **Accounts:** register, log in and log out, with sessions that renew themselves in the background.
+- **Accounts:** register with email and password or continue with Google, with sessions that renew themselves in the background.
 - **Tasks and habits:** daily, weekly, monthly and yearly habits, plus one-time tasks that stay visible until they are done.
 - **Subtasks:** each task has a checklist, and each day keeps its own progress.
 - **Reminders:** push notifications at the time the user chose, in their own time zone.
@@ -67,6 +67,7 @@ lib/
 | Navigation | go_router |
 | HTTP | Dio with interceptors |
 | Token storage | flutter_secure_storage |
+| Sign-in | Email and password, and Google Sign-In |
 | Push notifications | Firebase Cloud Messaging |
 | Animations | Fragment shader (GLSL) and Lottie |
 | CI/CD | Codemagic and Firebase App Distribution |
