@@ -6,7 +6,7 @@ This repository is the mobile client. It talks to two backend services that I al
 
 | Repository | What it is |
 |---|---|
-| **Auto-Admin-App** (this one) | Flutter client for Android |
+| **SelfAnvil** (this one) | Flutter client for Android |
 | [auth-service](https://github.com/MoiBeta/auth-service) | NestJS service for accounts and JWT sessions |
 | [habit-service](https://github.com/MoiBeta/habit-service) | NestJS service for habits, subtasks and reminders |
 | [selfanvil-infra](https://github.com/MoiBeta/selfanvil-infra) | Docker Compose, reverse proxy and deployment |
