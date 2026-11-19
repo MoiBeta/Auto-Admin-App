@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:auto_admin_app/core/storage/token_manager.dart';
 import 'package:dio/dio.dart';
 
@@ -51,8 +53,15 @@ class AuthInterceptor extends Interceptor {
       return handler.next(err);
     }
 
-    final newAccessToken = await (_refreshing ??=
-        _refreshTokens().whenComplete(() => _refreshing = null));
+    // An exception escaping here would leave the handler uncalled and the
+    // original request hanging forever, so any failure counts as "no token".
+    String? newAccessToken;
+    try {
+      newAccessToken = await (_refreshing ??=
+          _refreshTokens().whenComplete(() => _refreshing = null));
+    } catch (e, st) {
+      log('Token refresh failed', error: e, stackTrace: st);
+    }
 
     if (newAccessToken == null) {
       return handler.next(err);
@@ -107,6 +116,10 @@ class AuthInterceptor extends Interceptor {
 
   Future<void> _expireSession() async {
     await tokenManager.deleteTokens();
-    onSessionExpired?.call();
+    try {
+      onSessionExpired?.call();
+    } catch (e, st) {
+      log('onSessionExpired failed', error: e, stackTrace: st);
+    }
   }
 }
